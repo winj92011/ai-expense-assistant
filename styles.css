@@ -166,6 +166,43 @@ p {
   display: block;
 }
 
+.login-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.login-strip strong,
+.login-strip span {
+  display: block;
+}
+
+.login-strip span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.login-strip.connected {
+  border-color: #bce7d7;
+  background: #f1fbf7;
+}
+
+.login-strip.connected strong {
+  color: var(--green);
+}
+
+.login-strip.warning {
+  border-color: #f0d3b0;
+  background: #fff8ef;
+}
+
 .eyebrow {
   display: inline-block;
   margin-bottom: 8px;
@@ -180,7 +217,7 @@ p {
   justify-content: space-between;
   gap: 18px;
   margin-bottom: 18px;
-  padding: 18px 20px;
+  padding: 14px 16px;
   border: 1px solid #bfd5ff;
   border-radius: 8px;
   background: #f4f8ff;
@@ -188,7 +225,7 @@ p {
 
 .quick-start h2 {
   margin-top: 5px;
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .steps-row {
@@ -201,7 +238,7 @@ p {
 .steps-row span {
   display: grid;
   place-items: center;
-  min-height: 38px;
+  min-height: 34px;
   border-radius: 8px;
   background: #ffffff;
   color: var(--blue);
@@ -343,6 +380,19 @@ p {
 .secondary-button:hover {
   border-color: #b7c4d8;
   background: #f8fafc;
+}
+
+.text-button {
+  margin-left: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.text-button:hover {
+  text-decoration: underline;
 }
 
 .thinking-state {
@@ -597,6 +647,7 @@ th {
   .topbar,
   .section-title,
   .queue-card,
+  .login-strip,
   .quick-start {
     display: grid;
   }

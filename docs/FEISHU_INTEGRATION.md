@@ -12,10 +12,23 @@
 ## 免登录流程
 
 1. 员工从飞书工作台打开报销应用
-2. 前端获取飞书授权码
-3. 后端用授权码换取用户 `open_id`
-4. 后端按 `open_id` 匹配内部员工
-5. 返回业务会话
+2. 前端调用飞书 JSAPI 获取临时授权码
+3. 后端用 `FEISHU_APP_ID` 和 `FEISHU_APP_SECRET` 获取 `app_access_token`
+4. 后端用临时授权码换取 `user_access_token` 和用户身份
+5. 后端按 `open_id` / `union_id` / `user_id` 匹配内部员工
+6. 返回业务会话
+
+当前原型已准备两个 Vercel Serverless 接口：
+
+- `/api/feishu-config`：返回前端可用的 `appId`
+- `/api/feishu-login`：接收临时授权码并换取用户身份
+
+Vercel 环境变量需要配置：
+
+```bash
+FEISHU_APP_ID=cli_xxx
+FEISHU_APP_SECRET=xxx
+```
 
 ## 消息卡片动作
 

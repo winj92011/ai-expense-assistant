@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AI 报销助理</title>
     <link rel="stylesheet" href="./styles.css" />
+    <script src="https://lf1-cdn-tos.bytegoofy.com/goofy/ee/lark/external_js_sdk/h5-js-sdk-1.5.28.js"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -37,18 +38,26 @@
         <header class="topbar">
           <div>
             <span class="eyebrow">AI 报销助理 v0.2</span>
-            <h1>把票据发给我，我来生成报销草稿</h1>
-            <p>自动识别票据、还原行程、匹配审批，并温和提示可能遗漏的费用。</p>
+            <h1>上传票据，生成报销草稿</h1>
+            <p>AI 会整理行程、费用和异常提示。</p>
           </div>
           <button class="secondary-button" type="button" id="syncFeishuBtn">同步飞书审批</button>
         </header>
+
+        <section class="login-strip" id="loginStrip">
+          <div>
+            <strong id="loginTitle">飞书身份未连接</strong>
+            <span id="loginSubtitle">在飞书内打开后，可自动识别当前员工。</span>
+          </div>
+          <button class="secondary-button" type="button" id="loginBtn">尝试免登录</button>
+        </section>
 
         <section class="view active" id="claimView" data-view-panel="claim">
           <section class="quick-start">
             <div>
               <span class="label">今日推荐流程</span>
-              <h2>上传票据后先生成草稿，你确认后再提交审批</h2>
-              <p>AI 会给出建议，但不会替你强制提交，也不会因为缺少部分票据阻止流程。</p>
+              <h2>确认后再提交审批</h2>
+              <p>缺少票据时只提示，不阻止提交。</p>
             </div>
             <div class="steps-row" aria-label="报销流程">
               <span>上传</span>
@@ -62,8 +71,8 @@
             <section class="upload-panel">
               <div class="panel-head">
                 <div>
-                  <h2>把票据发给我</h2>
-                  <p>支持发票、行程单、酒店、打车、餐饮图片或 PDF</p>
+                  <h2>上传票据</h2>
+                  <p>支持图片和 PDF</p>
                 </div>
                 <span class="status-pill">飞书内测</span>
               </div>
@@ -72,7 +81,7 @@
                 <input id="receiptInput" type="file" multiple accept="image/*,.pdf" />
                 <span class="drop-icon">+</span>
                 <strong>点击上传票据</strong>
-                <small>也可以拖入文件；当前版本会模拟 AI 识别结果</small>
+                <small>当前版本为模拟识别</small>
               </label>
 
               <div class="file-list" id="fileList" aria-live="polite"></div>
@@ -85,15 +94,15 @@
             <section class="assistant-panel">
               <div class="panel-head">
                 <div>
-                  <h2>我来帮你还原行程</h2>
-                  <p>从票据里整理日期、城市、费用和异常提示</p>
+                  <h2>AI 识别结果</h2>
+                  <p>行程、费用、异常</p>
                 </div>
               </div>
 
               <div class="thinking-state" id="thinkingState">
                 <div class="pulse-ring"></div>
                 <strong>等待票据</strong>
-                <span>上传后会生成一份可编辑的报销草稿</span>
+                <span>上传后生成可编辑草稿</span>
               </div>
 
               <div class="ai-result hidden" id="aiResult">
@@ -135,7 +144,7 @@
             <div class="section-title">
               <div>
                 <h2>报销草稿</h2>
-                <p>你可以先补充遗漏票据，也可以直接确认并提交审批</p>
+                <p>确认无误后提交审批</p>
               </div>
               <div class="action-group">
                 <button class="secondary-button" type="button" id="editDraftBtn">调整明细</button>

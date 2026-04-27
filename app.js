@@ -1,45 +1,10 @@
 const state = {
   files: [],
+  draftItems: [],
+  claimStatus: "idle",
+  submittedClaims: [],
   analyzed: false,
 };
-
-const sampleItems = [
-  {
-    date: "2026-04-08",
-    category: "机票",
-    vendor: "中国东方航空",
-    amount: 1280,
-    status: "已匹配审批",
-  },
-  {
-    date: "2026-04-08",
-    category: "本地交通",
-    vendor: "滴滴出行",
-    amount: 146,
-    status: "自动分类",
-  },
-  {
-    date: "2026-04-08",
-    category: "餐饮",
-    vendor: "上海某餐饮管理有限公司",
-    amount: 576,
-    status: "需补充说明",
-  },
-  {
-    date: "2026-04-08",
-    category: "住宿",
-    vendor: "上海虹桥商务酒店",
-    amount: 1560,
-    status: "已匹配审批",
-  },
-  {
-    date: "2026-04-10",
-    category: "机票",
-    vendor: "中国国际航空",
-    amount: 724,
-    status: "已匹配审批",
-  },
-];
 
 const fileInput = document.querySelector("#receiptInput");
 const dropzone = document.querySelector("#dropzone");
@@ -50,6 +15,12 @@ const aiResult = document.querySelector("#aiResult");
 const draftSection = document.querySelector("#draftSection");
 const expenseRows = document.querySelector("#expenseRows");
 const toast = document.querySelector("#toast");
+const loginStrip = document.querySelector("#loginStrip");
+const loginTitle = document.querySelector("#loginTitle");
+const loginSubtitle = document.querySelector("#loginSubtitle");
+const loginBtn = document.querySelector("#loginBtn");
+const draftsView = document.querySelector("#draftsView");
+const approvalsView = document.querySelector("#approvalsView");
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("zh-CN", {
@@ -71,10 +42,11 @@ function renderFiles() {
   state.files.forEach((file, index) => {
     const item = document.createElement("div");
     item.className = "file-item";
+    const status = state.draftItems[index]?.status || "待识别";
     item.innerHTML = `
       <div>
         <strong>${file.name}</strong>
-        <p>${(file.size / 1024).toFixed(1)} KB</p>
+        <p>${getFileKind(file)} · ${(file.size / 1024).toFixed(1)} KB · ${status}</p>
       </div>
       <button class="secondary-button" type="button" data-remove="${index}">移除</button>
     `;
@@ -87,6 +59,7 @@ function renderFiles() {
 function addFiles(files) {
   const nextFiles = Array.from(files);
   state.files = [...state.files, ...nextFiles];
+  state.claimStatus = "uploaded";
   renderFiles();
   if (nextFiles.length > 0) {
     showToast(`已加入 ${nextFiles.length} 张票据`);
@@ -94,15 +67,14 @@ function addFiles(files) {
 }
 
 function renderDraft() {
-  const total = sampleItems.reduce((sum, item) => sum + item.amount, 0);
-  document.querySelector("#receiptCount").textContent = String(Math.max(state.files.length, 5));
+  const total = state.draftItems.reduce((sum, item) => sum + item.amount, 0);
+  document.querySelector("#receiptCount").textContent = String(state.files.length);
   document.querySelector("#totalAmount").textContent = formatCurrency(total);
-  document.querySelector("#riskCount").textContent = "1";
-  document.querySelector("#completenessText").textContent =
-    "已识别交通、住宿、餐饮票据。若还有本地交通、客户拜访餐饮或其他费用，可以继续补充；不补充也可以提交。";
+  document.querySelector("#riskCount").textContent = String(getRiskCount());
+  document.querySelector("#completenessText").textContent = getCompletenessText();
 
-  expenseRows.innerHTML = sampleItems
-    .map((item) => {
+  expenseRows.innerHTML = state.draftItems
+    .map((item, index) => {
       const statusClass = item.status.includes("需") ? "warn" : "ok";
       return `
         <tr>
@@ -110,7 +82,10 @@ function renderDraft() {
           <td>${item.category}</td>
           <td>${item.vendor}</td>
           <td>${formatCurrency(item.amount)}</td>
-          <td><span class="${statusClass}">${item.status}</span></td>
+          <td>
+            <span class="${statusClass}">${item.status}</span>
+            <button class="text-button" type="button" data-remove-item="${index}">删除</button>
+          </td>
         </tr>
       `;
     })
@@ -118,17 +93,27 @@ function renderDraft() {
 }
 
 function analyzeReceipts() {
+  state.claimStatus = "analyzing";
+  state.draftItems = [];
+  renderFiles();
   thinkingState.classList.add("working");
+  thinkingState.classList.remove("hidden");
+  aiResult.classList.add("hidden");
+  draftSection.classList.add("hidden");
   thinkingState.querySelector("strong").textContent = "正在还原行程";
-  thinkingState.querySelector("span").textContent = "我会识别票据字段、匹配出差审批，并整理可确认的草稿";
+  thinkingState.querySelector("span").textContent = "识别票据、匹配审批、整理草稿";
   analyzeBtn.disabled = true;
 
   window.setTimeout(() => {
     thinkingState.classList.add("hidden");
     aiResult.classList.remove("hidden");
     draftSection.classList.remove("hidden");
+    state.draftItems = createDraftItems(state.files);
+    state.claimStatus = "ready";
     state.analyzed = true;
     renderDraft();
+    renderFiles();
+    renderDraftsView();
     showToast("已生成报销草稿，请确认后提交");
   }, 1100);
 }
@@ -158,7 +143,9 @@ fileList.addEventListener("click", (event) => {
   if (!button) return;
   const index = Number(button.dataset.remove);
   state.files.splice(index, 1);
+  state.draftItems.splice(index, 1);
   renderFiles();
+  renderDraft();
 });
 
 analyzeBtn.addEventListener("click", analyzeReceipts);
@@ -177,16 +164,48 @@ document.querySelector("#syncFeishuBtn").addEventListener("click", () => {
   showToast("已模拟同步飞书出差审批");
 });
 
+loginBtn.addEventListener("click", () => {
+  loginWithFeishu();
+});
+
 document.querySelector("#submitDraftBtn").addEventListener("click", () => {
-  showToast("已模拟推送飞书审批卡片");
+  if (!state.draftItems.length) {
+    showToast("请先生成报销草稿");
+    return;
+  }
+
+  const total = state.draftItems.reduce((sum, item) => sum + item.amount, 0);
+  const claim = {
+    id: `claim-${Date.now()}`,
+    title: document.querySelector("#tripTitle").textContent,
+    total,
+    count: state.draftItems.length,
+    status: "已提交",
+  };
+  state.submittedClaims.unshift(claim);
+  state.claimStatus = "submitted";
+  renderDraftsView();
+  renderApprovalsView(claim);
+  showToast("已提交审批");
 });
 
 document.querySelector("#editDraftBtn").addEventListener("click", () => {
   showToast("明细编辑会在下一版接入");
 });
 
+expenseRows.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-remove-item]");
+  if (!button) return;
+
+  const index = Number(button.dataset.removeItem);
+  state.draftItems.splice(index, 1);
+  renderDraft();
+  renderDraftsView();
+  showToast("已删除该明细");
+});
+
 document.querySelector("#exportBtn").addEventListener("click", () => {
-  const rows = [["日期", "费用类型", "商户", "金额", "状态"], ...sampleItems.map((item) => [
+  const rows = [["日期", "费用类型", "商户", "金额", "状态"], ...state.draftItems.map((item) => [
     item.date,
     item.category,
     item.vendor,
@@ -202,3 +221,185 @@ document.querySelector("#exportBtn").addEventListener("click", () => {
   link.click();
   URL.revokeObjectURL(url);
 });
+
+async function loginWithFeishu() {
+  try {
+    setLoginState("warning", "正在连接飞书身份", "请在飞书客户端内完成授权。");
+
+    const configRes = await fetch("/api/feishu-config");
+    const config = await configRes.json();
+
+    if (!config.enabled || !config.appId) {
+      setLoginState("warning", "免登录未配置", "请先在 Vercel 配置 FEISHU_APP_ID 和 FEISHU_APP_SECRET。");
+      return;
+    }
+
+    const code = await requestFeishuCode(config.appId);
+    const loginRes = await fetch("/api/feishu-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    const data = await loginRes.json();
+
+    if (!loginRes.ok) {
+      throw new Error(data.error || "飞书免登录失败");
+    }
+
+    const name = data.user?.name || data.user?.enName || "当前员工";
+    setLoginState("connected", `已识别：${name}`, "后续会自动带入报销人和部门信息。");
+    showToast("飞书免登录成功");
+  } catch (error) {
+    setLoginState("warning", "免登录失败", error.message || "请确认在飞书客户端内打开。");
+  }
+}
+
+function requestFeishuCode(appId) {
+  return new Promise((resolve, reject) => {
+    const ttApi = window.tt;
+
+    if (!ttApi) {
+      reject(new Error("未检测到飞书 JSAPI，请在飞书客户端内打开。"));
+      return;
+    }
+
+    if (typeof ttApi.requestAccess === "function") {
+      ttApi.requestAccess({
+        appID: appId,
+        scopeList: [],
+        success: (res) => resolve(res.code),
+        fail: (err) => reject(new Error(JSON.stringify(err))),
+      });
+      return;
+    }
+
+    if (typeof ttApi.requestAuthCode === "function") {
+      ttApi.requestAuthCode({
+        appId,
+        success: (res) => resolve(res.code),
+        fail: (err) => reject(new Error(JSON.stringify(err))),
+      });
+      return;
+    }
+
+    reject(new Error("当前飞书客户端不支持免登录 JSAPI。"));
+  });
+}
+
+function setLoginState(type, title, subtitle) {
+  loginStrip.classList.remove("connected", "warning");
+  if (type) loginStrip.classList.add(type);
+  loginTitle.textContent = title;
+  loginSubtitle.textContent = subtitle;
+}
+
+function createDraftItems(files) {
+  const templates = [
+    { category: "机票", vendor: "航空行程单", amount: 1280, status: "已匹配审批" },
+    { category: "本地交通", vendor: "出行平台", amount: 146, status: "自动分类" },
+    { category: "住宿", vendor: "酒店住宿", amount: 560, status: "已匹配审批" },
+    { category: "餐饮", vendor: "餐饮商户", amount: 276, status: "需补充说明" },
+    { category: "其他", vendor: "其他费用", amount: 88, status: "需确认" },
+  ];
+
+  return files.map((file, index) => {
+    const template = templates[index % templates.length];
+    return {
+      date: `2026-04-${String(8 + Math.min(index, 2)).padStart(2, "0")}`,
+      category: inferCategory(file.name, template.category),
+      vendor: inferVendor(file.name, template.vendor),
+      amount: template.amount + index * 18,
+      status: template.status,
+    };
+  });
+}
+
+function inferCategory(fileName, fallback) {
+  const name = fileName.toLowerCase();
+  if (name.includes("hotel") || name.includes("酒店") || name.includes("住宿")) return "住宿";
+  if (name.includes("taxi") || name.includes("didi") || name.includes("打车")) return "本地交通";
+  if (name.includes("flight") || name.includes("机票") || name.includes("行程")) return "机票";
+  if (name.includes("餐") || name.includes("food")) return "餐饮";
+  return fallback;
+}
+
+function inferVendor(fileName, fallback) {
+  const base = fileName.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ").trim();
+  return base ? `${fallback} · ${base.slice(0, 18)}` : fallback;
+}
+
+function getFileKind(file) {
+  if (file.type.includes("pdf")) return "PDF";
+  if (file.type.includes("image")) return "图片";
+  return "文件";
+}
+
+function getRiskCount() {
+  return state.draftItems.filter((item) => item.status.includes("需")).length;
+}
+
+function getCompletenessText() {
+  const categories = new Set(state.draftItems.map((item) => item.category));
+  const missing = ["住宿", "本地交通", "餐饮"].filter((category) => !categories.has(category));
+  if (!missing.length) return "行程费用较完整。如还有其他票据，也可以继续补充。";
+  return `可能还缺少${missing.join("、")}票据；这只是提醒，不影响提交。`;
+}
+
+function renderDraftsView() {
+  if (!state.draftItems.length && !state.submittedClaims.length) {
+    draftsView.innerHTML = `
+      <div class="empty-state">
+        <h2>暂无草稿</h2>
+        <p>上传票据后，AI 会在这里生成可编辑的报销单。</p>
+      </div>
+    `;
+    return;
+  }
+
+  const currentDraft = state.draftItems.length
+    ? `
+      <article class="queue-card">
+        <div>
+          <span class="label">待确认草稿</span>
+          <h2>${document.querySelector("#tripTitle").textContent}</h2>
+          <p>${state.draftItems.length} 张票据，合计 ${formatCurrency(state.draftItems.reduce((sum, item) => sum + item.amount, 0))}</p>
+        </div>
+        <button class="secondary-button" type="button" data-view-draft>查看草稿</button>
+      </article>
+    `
+    : "";
+
+  const submitted = state.submittedClaims
+    .map(
+      (claim) => `
+        <article class="queue-card">
+          <div>
+            <span class="label">${claim.status}</span>
+            <h2>${claim.title}</h2>
+            <p>${claim.count} 张票据，合计 ${formatCurrency(claim.total)}</p>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+
+  draftsView.innerHTML = `<div class="queue-list">${currentDraft}${submitted}</div>`;
+}
+
+function renderApprovalsView(claim) {
+  approvalsView.innerHTML = `
+    <div class="queue-list">
+      <article class="queue-card">
+        <div>
+          <span class="label">飞书卡片预览</span>
+          <h2>吴经理提交了 ${formatCurrency(claim.total)} 差旅报销</h2>
+          <p>${claim.title}，${claim.count} 张票据，${getRiskCount()} 项需要确认。</p>
+        </div>
+        <div class="action-group">
+          <button class="secondary-button" type="button">查看详情</button>
+          <button class="primary-button" type="button">同意</button>
+        </div>
+      </article>
+    </div>
+  `;
+}
