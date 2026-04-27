@@ -97,7 +97,7 @@ function renderDraft() {
     .join("");
 }
 
-function analyzeReceipts() {
+async function analyzeReceipts() {
   state.claimStatus = "analyzing";
   state.draftItems = [];
   renderFiles();
@@ -109,18 +109,32 @@ function analyzeReceipts() {
   thinkingState.querySelector("span").textContent = "识别票据、匹配审批、整理草稿";
   analyzeBtn.disabled = true;
 
-  window.setTimeout(() => {
+  try {
+    const result = await analyzeFiles(state.files);
     thinkingState.classList.add("hidden");
     aiResult.classList.remove("hidden");
     draftSection.classList.remove("hidden");
-    state.draftItems = createDraftItems(state.files);
+    applyAnalysisResult(result);
     state.claimStatus = "ready";
     state.analyzed = true;
     renderDraft();
     renderFiles();
     renderDraftsView();
-    showToast("已生成报销草稿，请确认后提交");
-  }, 1100);
+    showToast(result.source === "mock" ? "已生成模拟草稿" : "AI 已生成报销草稿");
+  } catch (error) {
+    state.draftItems = createDraftItems(state.files);
+    thinkingState.classList.add("hidden");
+    aiResult.classList.remove("hidden");
+    draftSection.classList.remove("hidden");
+    state.claimStatus = "ready";
+    state.analyzed = true;
+    renderDraft();
+    renderFiles();
+    renderDraftsView();
+    showToast("AI 接口暂不可用，已使用本地模拟结果");
+  } finally {
+    analyzeBtn.disabled = state.files.length === 0;
+  }
 }
 
 fileInput.addEventListener("change", (event) => {
@@ -324,6 +338,65 @@ function setLoginState(type, title, subtitle) {
   if (type) loginStrip.classList.add(type);
   loginTitle.textContent = title;
   loginSubtitle.textContent = subtitle;
+}
+
+async function analyzeFiles(files) {
+  const payloadFiles = await Promise.all(
+    files.map(async (file) => ({
+      name: file.name,
+      type: file.type || "application/octet-stream",
+      size: file.size,
+      dataUrl: await readFileAsDataUrl(file),
+    })),
+  );
+
+  const response = await fetch("/api/receipts/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ files: payloadFiles }),
+  });
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || "AI analysis failed");
+  }
+
+  return data;
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function applyAnalysisResult(result) {
+  const trip = result.trip || {};
+  if (result.suggestedTitle) {
+    document.querySelector("#tripTitle").textContent = result.suggestedTitle;
+  } else if (trip.from_city || trip.to_city) {
+    document.querySelector("#tripTitle").textContent = `${trip.from_city || "出发地"}至${trip.to_city || "目的地"}差旅报销`;
+  }
+
+  if (result.summary) {
+    document.querySelector("#tripSummary").textContent = result.summary;
+  }
+
+  const items = Array.isArray(result.items) ? result.items : [];
+  state.draftItems = items.length ? items.map(normalizeDraftItem) : createDraftItems(state.files);
+}
+
+function normalizeDraftItem(item, index) {
+  return {
+    date: item.date || `2026-04-${String(8 + Math.min(index, 2)).padStart(2, "0")}`,
+    category: item.category || "其他",
+    vendor: item.vendor || "待确认商户",
+    amount: Number(item.amount || 0),
+    status: item.status || (item.confidence && item.confidence < 0.7 ? "需确认" : "AI 已识别"),
+  };
 }
 
 function renderCategoryOptions(selected) {

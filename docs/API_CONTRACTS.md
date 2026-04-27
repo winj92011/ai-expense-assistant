@@ -11,9 +11,10 @@
   "employee_id": "u_1001",
   "files": [
     {
-      "file_id": "file_abc",
-      "file_name": "hotel-invoice.pdf",
-      "mime_type": "application/pdf"
+      "name": "hotel-invoice.png",
+      "type": "image/png",
+      "size": 120000,
+      "dataUrl": "data:image/png;base64,..."
     }
   ]
 }
