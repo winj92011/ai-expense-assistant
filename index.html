@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI 报销助理</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="应用导航">
+        <div class="brand">
+          <div class="brand-mark">AI</div>
+          <div>
+            <strong>报销助理</strong>
+            <span>飞书工作台</span>
+          </div>
+        </div>
+
+        <nav class="nav-list">
+          <button class="nav-item active" type="button" data-view="claim">上传票据</button>
+          <button class="nav-item" type="button" data-view="drafts">报销草稿</button>
+          <button class="nav-item" type="button" data-view="approvals">审批队列</button>
+          <button class="nav-item" type="button" data-view="finance">财务复核</button>
+        </nav>
+
+        <div class="account-card">
+          <span class="avatar">吴</span>
+          <div>
+            <strong>吴经理</strong>
+            <span>产品负责人</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <h1>AI 报销助理</h1>
+            <p>上传票据后自动还原行程、匹配审批并生成报销草稿</p>
+          </div>
+          <button class="secondary-button" type="button" id="syncFeishuBtn">同步飞书审批</button>
+        </header>
+
+        <section class="view active" id="claimView" data-view-panel="claim">
+          <div class="hero-grid">
+            <section class="upload-panel">
+              <div class="panel-head">
+                <div>
+                  <h2>票据上传</h2>
+                  <p>支持图片、PDF、行程单截图</p>
+                </div>
+                <span class="status-pill">v0.1 本地演示</span>
+              </div>
+
+              <label class="dropzone" for="receiptInput" id="dropzone">
+                <input id="receiptInput" type="file" multiple accept="image/*,.pdf" />
+                <span class="drop-icon">+</span>
+                <strong>点击选择或拖入票据</strong>
+                <small>系统会模拟 OCR 识别并生成报销草稿</small>
+              </label>
+
+              <div class="file-list" id="fileList" aria-live="polite"></div>
+
+              <button class="primary-button" type="button" id="analyzeBtn" disabled>
+                生成 AI 报销草稿
+              </button>
+            </section>
+
+            <section class="assistant-panel">
+              <div class="panel-head">
+                <div>
+                  <h2>AI 推断</h2>
+                  <p>票据、审批、行程、异常</p>
+                </div>
+              </div>
+
+              <div class="thinking-state" id="thinkingState">
+                <div class="pulse-ring"></div>
+                <strong>等待票据</strong>
+                <span>上传后将自动识别费用类型和行程线索</span>
+              </div>
+
+              <div class="ai-result hidden" id="aiResult">
+                <div class="trip-card">
+                  <span class="label">建议行程</span>
+                  <h3 id="tripTitle">北京至上海客户拜访</h3>
+                  <p id="tripSummary">2026-04-08 至 2026-04-10，已匹配出差审批。</p>
+                </div>
+
+                <div class="metric-row">
+                  <div>
+                    <span>票据</span>
+                    <strong id="receiptCount">0</strong>
+                  </div>
+                  <div>
+                    <span>金额</span>
+                    <strong id="totalAmount">¥0</strong>
+                  </div>
+                  <div>
+                    <span>异常</span>
+                    <strong id="riskCount">0</strong>
+                  </div>
+                </div>
+
+                <div class="risk-box">
+                  <strong>需要确认</strong>
+                  <p id="riskText">1 张餐饮票据接近单人标准上限，建议补充业务说明。</p>
+                </div>
+
+                <div class="completeness-box">
+                  <strong>行程完整性建议</strong>
+                  <p id="completenessText">系统会提示可能遗漏的票据，例如住宿、本地交通或餐饮；这些建议不会阻止提交。</p>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <section class="draft-section hidden" id="draftSection">
+            <div class="section-title">
+              <div>
+                <h2>报销草稿</h2>
+                <p>确认后可推送飞书消息卡片审批</p>
+              </div>
+              <div class="action-group">
+                <button class="secondary-button" type="button" id="editDraftBtn">调整明细</button>
+                <button class="primary-button" type="button" id="submitDraftBtn">确认并提交</button>
+              </div>
+            </div>
+
+            <div class="draft-layout">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>日期</th>
+                      <th>费用类型</th>
+                      <th>商户/承运方</th>
+                      <th>金额</th>
+                      <th>状态</th>
+                    </tr>
+                  </thead>
+                  <tbody id="expenseRows"></tbody>
+                </table>
+              </div>
+
+              <aside class="approval-card">
+                <span class="label">审批链路</span>
+                <ol class="timeline">
+                  <li class="done">员工确认</li>
+                  <li>主管审批</li>
+                  <li>财务复核</li>
+                  <li>出纳付款</li>
+                </ol>
+                <div class="soft-note">
+                  如果本次行程还有未上传票据，可以继续补充；也可以先提交当前报销。
+                </div>
+              </aside>
+            </div>
+          </section>
+        </section>
+
+        <section class="view" id="draftsView" data-view-panel="drafts">
+          <div class="empty-state">
+            <h2>暂无待确认草稿</h2>
+            <p>上传票据后，AI 会在这里生成可编辑的报销单。</p>
+          </div>
+        </section>
+
+        <section class="view" id="approvalsView" data-view-panel="approvals">
+          <div class="queue-list">
+            <article class="queue-card">
+              <div>
+                <span class="label">飞书卡片预览</span>
+                <h2>吴经理提交了 ¥4,286 差旅报销</h2>
+                <p>北京至上海客户拜访，7 张票据，1 项需要确认。</p>
+              </div>
+              <div class="action-group">
+                <button class="secondary-button" type="button">查看详情</button>
+                <button class="primary-button" type="button">同意</button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="financeView" data-view-panel="finance">
+          <div class="finance-grid">
+            <div class="stat-card">
+              <span>待复核</span>
+              <strong>12</strong>
+            </div>
+            <div class="stat-card">
+              <span>本月报销</span>
+              <strong>¥83,420</strong>
+            </div>
+            <div class="stat-card">
+              <span>异常率</span>
+              <strong>8.6%</strong>
+            </div>
+          </div>
+          <button class="secondary-button" type="button" id="exportBtn">导出台账 CSV</button>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
