@@ -13,15 +13,15 @@
           <div class="brand-mark">AI</div>
           <div>
             <strong>报销助理</strong>
-            <span>飞书工作台</span>
+            <span>员工报销入口</span>
           </div>
         </div>
 
         <nav class="nav-list">
-          <button class="nav-item active" type="button" data-view="claim">上传票据</button>
-          <button class="nav-item" type="button" data-view="drafts">报销草稿</button>
-          <button class="nav-item" type="button" data-view="approvals">审批队列</button>
-          <button class="nav-item" type="button" data-view="finance">财务复核</button>
+          <button class="nav-item active" type="button" data-view="claim">开始报销</button>
+          <button class="nav-item" type="button" data-view="drafts">我的草稿</button>
+          <button class="nav-item" type="button" data-view="approvals">待我处理</button>
+          <button class="nav-item admin-item" type="button" data-view="finance">财务复核</button>
         </nav>
 
         <div class="account-card">
@@ -36,28 +36,43 @@
       <main class="workspace">
         <header class="topbar">
           <div>
-            <h1>AI 报销助理</h1>
-            <p>上传票据后自动还原行程、匹配审批并生成报销草稿</p>
+            <span class="eyebrow">AI 报销助理 v0.2</span>
+            <h1>把票据发给我，我来生成报销草稿</h1>
+            <p>自动识别票据、还原行程、匹配审批，并温和提示可能遗漏的费用。</p>
           </div>
           <button class="secondary-button" type="button" id="syncFeishuBtn">同步飞书审批</button>
         </header>
 
         <section class="view active" id="claimView" data-view-panel="claim">
+          <section class="quick-start">
+            <div>
+              <span class="label">今日推荐流程</span>
+              <h2>上传票据后先生成草稿，你确认后再提交审批</h2>
+              <p>AI 会给出建议，但不会替你强制提交，也不会因为缺少部分票据阻止流程。</p>
+            </div>
+            <div class="steps-row" aria-label="报销流程">
+              <span>上传</span>
+              <span>识别</span>
+              <span>确认</span>
+              <span>审批</span>
+            </div>
+          </section>
+
           <div class="hero-grid">
             <section class="upload-panel">
               <div class="panel-head">
                 <div>
-                  <h2>票据上传</h2>
-                  <p>支持图片、PDF、行程单截图</p>
+                  <h2>把票据发给我</h2>
+                  <p>支持发票、行程单、酒店、打车、餐饮图片或 PDF</p>
                 </div>
-                <span class="status-pill">v0.1 本地演示</span>
+                <span class="status-pill">飞书内测</span>
               </div>
 
               <label class="dropzone" for="receiptInput" id="dropzone">
                 <input id="receiptInput" type="file" multiple accept="image/*,.pdf" />
                 <span class="drop-icon">+</span>
-                <strong>点击选择或拖入票据</strong>
-                <small>系统会模拟 OCR 识别并生成报销草稿</small>
+                <strong>点击上传票据</strong>
+                <small>也可以拖入文件；当前版本会模拟 AI 识别结果</small>
               </label>
 
               <div class="file-list" id="fileList" aria-live="polite"></div>
@@ -70,15 +85,15 @@
             <section class="assistant-panel">
               <div class="panel-head">
                 <div>
-                  <h2>AI 推断</h2>
-                  <p>票据、审批、行程、异常</p>
+                  <h2>我来帮你还原行程</h2>
+                  <p>从票据里整理日期、城市、费用和异常提示</p>
                 </div>
               </div>
 
               <div class="thinking-state" id="thinkingState">
                 <div class="pulse-ring"></div>
                 <strong>等待票据</strong>
-                <span>上传后将自动识别费用类型和行程线索</span>
+                <span>上传后会生成一份可编辑的报销草稿</span>
               </div>
 
               <div class="ai-result hidden" id="aiResult">
@@ -120,7 +135,7 @@
             <div class="section-title">
               <div>
                 <h2>报销草稿</h2>
-                <p>确认后可推送飞书消息卡片审批</p>
+                <p>你可以先补充遗漏票据，也可以直接确认并提交审批</p>
               </div>
               <div class="action-group">
                 <button class="secondary-button" type="button" id="editDraftBtn">调整明细</button>

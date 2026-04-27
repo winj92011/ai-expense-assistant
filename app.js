@@ -120,7 +120,7 @@ function renderDraft() {
 function analyzeReceipts() {
   thinkingState.classList.add("working");
   thinkingState.querySelector("strong").textContent = "正在还原行程";
-  thinkingState.querySelector("span").textContent = "识别票据字段、匹配出差审批、生成报销草稿";
+  thinkingState.querySelector("span").textContent = "我会识别票据字段、匹配出差审批，并整理可确认的草稿";
   analyzeBtn.disabled = true;
 
   window.setTimeout(() => {
@@ -129,7 +129,7 @@ function analyzeReceipts() {
     draftSection.classList.remove("hidden");
     state.analyzed = true;
     renderDraft();
-    showToast("AI 已生成报销草稿");
+    showToast("已生成报销草稿，请确认后提交");
   }, 1100);
 }
 
