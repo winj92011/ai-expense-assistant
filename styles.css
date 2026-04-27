@@ -395,6 +395,26 @@ p {
   text-decoration: underline;
 }
 
+.cell-input,
+.cell-select {
+  width: 100%;
+  min-width: 92px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  padding: 7px 8px;
+}
+
+.cell-input:hover,
+.cell-input:focus,
+.cell-select:hover,
+.cell-select:focus {
+  border-color: var(--line);
+  background: #ffffff;
+  outline: none;
+}
+
 .thinking-state {
   display: grid;
   place-items: center;
@@ -577,10 +597,21 @@ th {
   padding: 24px;
 }
 
+.empty-state.compact {
+  padding: 18px;
+  box-shadow: none;
+}
+
 .finance-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
+  margin-bottom: 18px;
+}
+
+.finance-list {
+  display: grid;
+  gap: 12px;
   margin-bottom: 18px;
 }
 

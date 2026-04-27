@@ -211,15 +211,21 @@
           <div class="finance-grid">
             <div class="stat-card">
               <span>待复核</span>
-              <strong>12</strong>
+              <strong id="financePendingCount">0</strong>
             </div>
             <div class="stat-card">
               <span>本月报销</span>
-              <strong>¥83,420</strong>
+              <strong id="financeTotalAmount">¥0</strong>
             </div>
             <div class="stat-card">
               <span>异常率</span>
-              <strong>8.6%</strong>
+              <strong id="financeRiskRate">0%</strong>
+            </div>
+          </div>
+          <div class="finance-list" id="financeList">
+            <div class="empty-state compact">
+              <h2>暂无待复核报销</h2>
+              <p>员工提交后会出现在这里。</p>
             </div>
           </div>
           <button class="secondary-button" type="button" id="exportBtn">导出台账 CSV</button>

@@ -21,6 +21,7 @@ const loginSubtitle = document.querySelector("#loginSubtitle");
 const loginBtn = document.querySelector("#loginBtn");
 const draftsView = document.querySelector("#draftsView");
 const approvalsView = document.querySelector("#approvalsView");
+const financeList = document.querySelector("#financeList");
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("zh-CN", {
@@ -78,10 +79,14 @@ function renderDraft() {
       const statusClass = item.status.includes("需") ? "warn" : "ok";
       return `
         <tr>
-          <td>${item.date}</td>
-          <td>${item.category}</td>
-          <td>${item.vendor}</td>
-          <td>${formatCurrency(item.amount)}</td>
+          <td><input class="cell-input" data-field="date" data-index="${index}" value="${item.date}" /></td>
+          <td>
+            <select class="cell-select" data-field="category" data-index="${index}">
+              ${renderCategoryOptions(item.category)}
+            </select>
+          </td>
+          <td><input class="cell-input" data-field="vendor" data-index="${index}" value="${item.vendor}" /></td>
+          <td><input class="cell-input" data-field="amount" data-index="${index}" type="number" min="0" step="1" value="${item.amount}" /></td>
           <td>
             <span class="${statusClass}">${item.status}</span>
             <button class="text-button" type="button" data-remove-item="${index}">删除</button>
@@ -180,12 +185,14 @@ document.querySelector("#submitDraftBtn").addEventListener("click", () => {
     title: document.querySelector("#tripTitle").textContent,
     total,
     count: state.draftItems.length,
+    items: state.draftItems.map((item) => ({ ...item })),
     status: "已提交",
   };
   state.submittedClaims.unshift(claim);
   state.claimStatus = "submitted";
   renderDraftsView();
   renderApprovalsView(claim);
+  renderFinanceView();
   showToast("已提交审批");
 });
 
@@ -204,14 +211,40 @@ expenseRows.addEventListener("click", (event) => {
   showToast("已删除该明细");
 });
 
+expenseRows.addEventListener("change", (event) => {
+  const field = event.target.dataset.field;
+  const index = Number(event.target.dataset.index);
+  if (!field || Number.isNaN(index) || !state.draftItems[index]) return;
+
+  state.draftItems[index][field] = field === "amount" ? Number(event.target.value || 0) : event.target.value;
+  renderDraft();
+  renderDraftsView();
+});
+
 document.querySelector("#exportBtn").addEventListener("click", () => {
-  const rows = [["日期", "费用类型", "商户", "金额", "状态"], ...state.draftItems.map((item) => [
+  const claimRows = state.submittedClaims.flatMap((claim) =>
+    claim.items.map((item) => [
+      claim.id,
+      claim.title,
+      claim.status,
+      item.date,
+      item.category,
+      item.vendor,
+      item.amount,
+      item.status,
+    ]),
+  );
+  const draftRows = state.draftItems.map((item) => [
+    "draft",
+    document.querySelector("#tripTitle").textContent,
+    "草稿",
     item.date,
     item.category,
     item.vendor,
     item.amount,
     item.status,
-  ])];
+  ]);
+  const rows = [["报销单", "标题", "单据状态", "日期", "费用类型", "商户", "金额", "明细状态"], ...claimRows, ...draftRows];
   const csv = rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\n");
   const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -291,6 +324,12 @@ function setLoginState(type, title, subtitle) {
   if (type) loginStrip.classList.add(type);
   loginTitle.textContent = title;
   loginSubtitle.textContent = subtitle;
+}
+
+function renderCategoryOptions(selected) {
+  return ["机票", "火车票", "住宿", "本地交通", "餐饮", "办公", "其他"]
+    .map((category) => `<option value="${category}" ${category === selected ? "selected" : ""}>${category}</option>`)
+    .join("");
 }
 
 function createDraftItems(files) {
@@ -402,4 +441,46 @@ function renderApprovalsView(claim) {
       </article>
     </div>
   `;
+}
+
+function renderFinanceView() {
+  const claims = state.submittedClaims;
+  const total = claims.reduce((sum, claim) => sum + claim.total, 0);
+  const totalItems = claims.reduce((sum, claim) => sum + claim.items.length, 0);
+  const riskyItems = claims.reduce(
+    (sum, claim) => sum + claim.items.filter((item) => item.status.includes("需")).length,
+    0,
+  );
+
+  document.querySelector("#financePendingCount").textContent = String(claims.length);
+  document.querySelector("#financeTotalAmount").textContent = formatCurrency(total);
+  document.querySelector("#financeRiskRate").textContent = totalItems ? `${Math.round((riskyItems / totalItems) * 100)}%` : "0%";
+
+  if (!claims.length) {
+    financeList.innerHTML = `
+      <div class="empty-state compact">
+        <h2>暂无待复核报销</h2>
+        <p>员工提交后会出现在这里。</p>
+      </div>
+    `;
+    return;
+  }
+
+  financeList.innerHTML = claims
+    .map(
+      (claim) => `
+        <article class="queue-card">
+          <div>
+            <span class="label">待财务复核</span>
+            <h2>${claim.title}</h2>
+            <p>${claim.count} 张票据，合计 ${formatCurrency(claim.total)}</p>
+          </div>
+          <div class="action-group">
+            <button class="secondary-button" type="button">查看明细</button>
+            <button class="primary-button" type="button">标记已复核</button>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
 }
