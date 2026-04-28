@@ -615,6 +615,26 @@ th {
   margin-bottom: 18px;
 }
 
+.debug-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 22px;
+  box-shadow: var(--shadow);
+}
+
+.debug-panel pre {
+  min-height: 220px;
+  margin: 18px 0 0;
+  overflow: auto;
+  border-radius: 8px;
+  background: #101828;
+  color: #e8eefb;
+  padding: 16px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
 .stat-card {
   padding: 18px;
 }

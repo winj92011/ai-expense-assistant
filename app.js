@@ -23,6 +23,9 @@ const loginBtn = document.querySelector("#loginBtn");
 const draftsView = document.querySelector("#draftsView");
 const approvalsView = document.querySelector("#approvalsView");
 const financeList = document.querySelector("#financeList");
+const aiDebugOutput = document.querySelector("#aiDebugOutput");
+const runAiDebugBtn = document.querySelector("#runAiDebugBtn");
+let lastAiResult = null;
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("zh-CN", {
@@ -271,6 +274,32 @@ document.querySelector("#exportBtn").addEventListener("click", () => {
   URL.revokeObjectURL(url);
 });
 
+runAiDebugBtn.addEventListener("click", async () => {
+  aiDebugOutput.textContent = "正在测试 Kimi 文本接口...";
+  try {
+    const [statusRes, testRes] = await Promise.all([fetch("/api/ai-status"), fetch("/api/ai-test")]);
+    const status = await statusRes.json();
+    const test = await testRes.json();
+    aiDebugOutput.textContent = JSON.stringify(
+      {
+        status,
+        textTest: test,
+        lastReceiptAnalysis: lastAiResult
+          ? {
+              source: lastAiResult.source,
+              aiError: lastAiResult.aiError || "",
+              itemCount: Array.isArray(lastAiResult.items) ? lastAiResult.items.length : 0,
+            }
+          : null,
+      },
+      null,
+      2,
+    );
+  } catch (error) {
+    aiDebugOutput.textContent = error.message || "AI 调试失败";
+  }
+});
+
 async function loginWithFeishu() {
   try {
     setLoginState("warning", "正在连接飞书身份", "请在飞书客户端内完成授权。");
@@ -358,6 +387,7 @@ async function analyzeFiles(files) {
     body: JSON.stringify({ files: payloadFiles }),
   });
   const data = await response.json();
+  lastAiResult = data;
 
   if (!response.ok && !data.fallback) {
     throw new Error(data.error || "AI analysis failed");

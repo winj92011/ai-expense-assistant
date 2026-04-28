@@ -22,6 +22,7 @@
           <button class="nav-item active" type="button" data-view="claim">开始报销</button>
           <button class="nav-item" type="button" data-view="drafts">我的草稿</button>
           <button class="nav-item" type="button" data-view="approvals">待我处理</button>
+          <button class="nav-item admin-item" type="button" data-view="debug">AI 调试</button>
           <button class="nav-item admin-item" type="button" data-view="finance">财务复核</button>
         </nav>
 
@@ -230,6 +231,19 @@
             </div>
           </div>
           <button class="secondary-button" type="button" id="exportBtn">导出台账 CSV</button>
+        </section>
+
+        <section class="view" id="debugView" data-view-panel="debug">
+          <div class="debug-panel">
+            <div class="section-title">
+              <div>
+                <h2>AI 调试</h2>
+                <p>检查模型配置、文本连通性和最近一次识别结果。</p>
+              </div>
+              <button class="primary-button" type="button" id="runAiDebugBtn">运行测试</button>
+            </div>
+            <pre id="aiDebugOutput">点击“运行测试”查看状态。</pre>
+          </div>
         </section>
       </main>
     </div>
