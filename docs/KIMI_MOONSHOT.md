@@ -13,7 +13,7 @@ Kimi 官方文档说明 `kimi-k2.5` 支持视觉与文本输入，并兼容 Open
 ```bash
 AI_PROVIDER=kimi
 MOONSHOT_API_KEY=your_api_key
-MOONSHOT_BASE_URL=https://api.moonshot.cn/v1
+MOONSHOT_BASE_URL=https://api.moonshot.ai/v1
 KIMI_MODEL=kimi-k2.5
 ```
 

@@ -17,7 +17,7 @@ export default async function handler(request, response) {
     if ((provider === "auto" || provider === "kimi") && process.env.MOONSHOT_API_KEY) {
       const result = await analyzeWithOpenAICompatible({
         apiKey: process.env.MOONSHOT_API_KEY,
-        baseUrl: process.env.MOONSHOT_BASE_URL || "https://api.moonshot.cn/v1",
+        baseUrl: process.env.MOONSHOT_BASE_URL || "https://api.moonshot.ai/v1",
         model: process.env.KIMI_MODEL || "kimi-k2.5",
         files,
       });

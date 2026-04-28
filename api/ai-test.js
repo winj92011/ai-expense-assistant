@@ -15,7 +15,7 @@ export default async function handler(request, response) {
   }
 
   try {
-    const res = await fetch(`${process.env.MOONSHOT_BASE_URL || "https://api.moonshot.cn/v1"}/chat/completions`, {
+    const res = await fetch(`${process.env.MOONSHOT_BASE_URL || "https://api.moonshot.ai/v1"}/chat/completions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.MOONSHOT_API_KEY}`,
