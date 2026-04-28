@@ -23,13 +23,13 @@ export default async function handler(request, response) {
         files,
         travelBase,
       });
-      response.status(200).json({ ...normalizeModelResult(result, files), source: "kimi" });
+      response.status(200).json({ ...normalizeModelResult(result, files, travelBase), source: "kimi" });
       return;
     }
   } catch (error) {
     if (provider === "kimi") {
       response.status(200).json({
-        ...createMockAnalysis(files),
+        ...createMockAnalysis(files, travelBase),
         source: "mock",
         aiError: error.message || "Kimi receipt analysis failed",
       });
@@ -46,13 +46,13 @@ export default async function handler(request, response) {
         files,
         travelBase,
       });
-      response.status(200).json({ ...normalizeModelResult(result, files), source: "volcengine" });
+      response.status(200).json({ ...normalizeModelResult(result, files, travelBase), source: "volcengine" });
       return;
     }
   } catch (error) {
     if (provider === "volcengine") {
       response.status(200).json({
-        ...createMockAnalysis(files),
+        ...createMockAnalysis(files, travelBase),
         source: "mock",
         aiError: error.message || "Volcengine receipt analysis failed",
       });
@@ -60,7 +60,7 @@ export default async function handler(request, response) {
     }
   }
 
-  response.status(200).json({ ...createMockAnalysis(files), source: "mock" });
+  response.status(200).json({ ...createMockAnalysis(files, travelBase), source: "mock" });
 }
 
 function normalizeTravelBase(travelBase) {
@@ -189,27 +189,86 @@ function parseJsonResponse(text) {
   return JSON.parse(match ? match[0] : withoutFence);
 }
 
-function normalizeModelResult(result, files) {
+function normalizeModelResult(result, files, travelBase) {
   const normalized = result && typeof result === "object" ? result : {};
   const items = Array.isArray(normalized.items) ? normalized.items : [];
+  const normalizedItems = items.length ? items.map(normalizeItem) : createMockAnalysis(files, travelBase).items;
+  const trip = normalizeTrip(normalized.trip, travelBase);
+  const completenessSuggestions = normalizeCompletenessSuggestions(
+    normalized.completeness_suggestions,
+    trip,
+    travelBase,
+  );
+
   return {
-    trip: normalizeTrip(normalized.trip),
+    trip,
     suggestedTitle: normalized.suggestedTitle || "",
     summary: normalized.summary || "AI 已识别票据并生成报销草稿。",
-    items: items.length ? items.map(normalizeItem) : createMockAnalysis(files).items,
+    items: normalizedItems,
     risk_flags: Array.isArray(normalized.risk_flags) ? normalized.risk_flags : [],
-    completeness_suggestions: Array.isArray(normalized.completeness_suggestions) ? normalized.completeness_suggestions : [],
+    completeness_suggestions: completenessSuggestions,
   };
 }
 
-function normalizeTrip(trip) {
+function normalizeTrip(trip, travelBase) {
   const normalized = trip && typeof trip === "object" ? trip : {};
+  const routePath = normalizeRoutePath(normalized);
+  const baseCity = pickBaseCity(normalized, routePath, travelBase);
+  const isClosedLoop = Boolean(normalized.is_closed_loop) || isClosedRoute(routePath, baseCity);
+
   return {
     ...normalized,
-    base_city: normalized.base_city || null,
-    is_closed_loop: Boolean(normalized.is_closed_loop),
-    route_path: Array.isArray(normalized.route_path) ? normalized.route_path : [],
+    base_city: baseCity || normalized.base_city || null,
+    is_closed_loop: isClosedLoop,
+    route_path: routePath,
   };
+}
+
+function normalizeRoutePath(trip) {
+  const routePath = Array.isArray(trip.route_path) ? trip.route_path.map(normalizeCity).filter(Boolean) : [];
+  if (routePath.length) return routePath;
+
+  const fromCity = normalizeCity(trip.from_city);
+  const toCity = normalizeCity(trip.to_city);
+  return [fromCity, toCity].filter(Boolean);
+}
+
+function normalizeCity(city) {
+  return String(city || "").trim();
+}
+
+function getBaseCandidates(travelBase) {
+  return [travelBase?.primary, travelBase?.secondary].map(normalizeCity).filter(Boolean);
+}
+
+function pickBaseCity(trip, routePath, travelBase) {
+  const candidates = getBaseCandidates(travelBase);
+  const modelBase = normalizeCity(trip.base_city);
+  if (modelBase && (!candidates.length || candidates.includes(modelBase))) return modelBase;
+
+  return candidates.find((city) => routePath[0] === city || routePath.at(-1) === city) || candidates[0] || "";
+}
+
+function isClosedRoute(routePath, baseCity) {
+  if (!baseCity || routePath.length < 2) return false;
+  return routePath[0] === baseCity && routePath.at(-1) === baseCity;
+}
+
+function normalizeCompletenessSuggestions(suggestions, trip, travelBase) {
+  const normalizedSuggestions = Array.isArray(suggestions) ? suggestions.filter(Boolean) : [];
+  const routePath = Array.isArray(trip.route_path) ? trip.route_path : [];
+  const baseCity = trip.base_city || pickBaseCity(trip, routePath, travelBase);
+  const startsFromBase = Boolean(baseCity && routePath[0] === baseCity);
+
+  if (startsFromBase && !trip.is_closed_loop && !hasReturnTicketSuggestion(normalizedSuggestions)) {
+    normalizedSuggestions.push("本次行程从常驻出发地开始，但尚未看到返回常驻地的票据；如已有返程票据，可继续补充，不影响先提交。");
+  }
+
+  return normalizedSuggestions;
+}
+
+function hasReturnTicketSuggestion(suggestions) {
+  return suggestions.some((suggestion) => String(suggestion).includes("返程") || String(suggestion).includes("返回"));
 }
 
 function normalizeItem(item) {
@@ -228,7 +287,7 @@ function normalizeItem(item) {
   };
 }
 
-function createMockAnalysis(files) {
+function createMockAnalysis(files, travelBase = {}) {
   const templates = [
     { category: "机票", vendor: "航空行程单", amount: 1280, status: "已匹配审批" },
     { category: "本地交通", vendor: "出行平台", amount: 146, status: "自动分类" },
@@ -237,18 +296,20 @@ function createMockAnalysis(files) {
     { category: "其他", vendor: "其他费用", amount: 88, status: "需确认" },
   ];
 
+  const baseCity = travelBase.primary || "北京";
+
   return {
     trip: {
-      from_city: "北京",
+      from_city: baseCity,
       to_city: "上海",
       start_date: "2026-04-08",
       end_date: "2026-04-10",
-      base_city: "北京",
+      base_city: baseCity,
       is_closed_loop: false,
-      route_path: ["北京", "上海"],
+      route_path: [baseCity, "上海"],
       confidence: 0.6,
     },
-    suggestedTitle: "北京至上海客户拜访",
+    suggestedTitle: `${baseCity}至上海客户拜访`,
     summary: "2026-04-08 至 2026-04-10，已生成可编辑报销草稿。",
     items: files.map((file, index) => {
       const template = templates[index % templates.length];
