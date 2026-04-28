@@ -25,6 +25,8 @@ const approvalsView = document.querySelector("#approvalsView");
 const financeList = document.querySelector("#financeList");
 const aiDebugOutput = document.querySelector("#aiDebugOutput");
 const runAiDebugBtn = document.querySelector("#runAiDebugBtn");
+const primaryBaseCity = document.querySelector("#primaryBaseCity");
+const secondaryBaseCity = document.querySelector("#secondaryBaseCity");
 let lastAiResult = null;
 
 function formatCurrency(value) {
@@ -392,7 +394,10 @@ async function analyzeFiles(files) {
   const response = await fetch("/api/receipts/analyze", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ files: payloadFiles }),
+    body: JSON.stringify({
+      files: payloadFiles,
+      travelBase: getTravelBase(),
+    }),
   });
   const data = await response.json();
   lastAiResult = data;
@@ -425,6 +430,7 @@ function applyAnalysisResult(result) {
   setAiSource(getSourceLabel(result.source), result.aiError || "");
 
   const trip = result.trip || {};
+  const routeInsight = buildRouteInsight(trip);
   if (result.suggestedTitle) {
     document.querySelector("#tripTitle").textContent = result.suggestedTitle;
   } else if (trip.from_city || trip.to_city) {
@@ -434,9 +440,33 @@ function applyAnalysisResult(result) {
   if (result.summary) {
     document.querySelector("#tripSummary").textContent = result.summary;
   }
+  document.querySelector("#routeInsight").textContent = routeInsight;
 
   const items = Array.isArray(result.items) ? result.items : [];
   state.draftItems = items.length ? items.map(normalizeDraftItem) : createDraftItems(state.files);
+}
+
+function getTravelBase() {
+  return {
+    primary: primaryBaseCity.value,
+    secondary: secondaryBaseCity.value,
+  };
+}
+
+function buildRouteInsight(trip) {
+  const base = trip.base_city || getTravelBase().primary || "常驻地";
+  const routePath = Array.isArray(trip.route_path) ? trip.route_path.filter(Boolean) : [];
+  const routeText = routePath.length ? routePath.join(" → ") : `${trip.from_city || base} → ${trip.to_city || "目的地"}`;
+
+  if (trip.is_closed_loop) {
+    return `闭环行程 · ${routeText}`;
+  }
+
+  if (routePath.length > 1 || trip.from_city || trip.to_city) {
+    return `开放行程 · ${routeText} · 可继续补充返程票据`;
+  }
+
+  return `以 ${base} 作为出发地判断行程`;
 }
 
 function setAiSource(source, detail = "") {

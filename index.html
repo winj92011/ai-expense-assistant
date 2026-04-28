@@ -78,6 +78,34 @@
                 <span class="status-pill">飞书内测</span>
               </div>
 
+              <div class="base-picker" aria-label="行程出发地">
+                <label>
+                  <span>主要出发地</span>
+                  <select id="primaryBaseCity">
+                    <option value="北京" selected>北京</option>
+                    <option value="上海">上海</option>
+                    <option value="深圳">深圳</option>
+                    <option value="广州">广州</option>
+                    <option value="杭州">杭州</option>
+                    <option value="成都">成都</option>
+                    <option value="新加坡">新加坡</option>
+                  </select>
+                </label>
+                <label>
+                  <span>备用出发地</span>
+                  <select id="secondaryBaseCity">
+                    <option value="">无</option>
+                    <option value="北京">北京</option>
+                    <option value="上海">上海</option>
+                    <option value="深圳">深圳</option>
+                    <option value="广州">广州</option>
+                    <option value="杭州">杭州</option>
+                    <option value="成都">成都</option>
+                    <option value="新加坡">新加坡</option>
+                  </select>
+                </label>
+              </div>
+
               <label class="dropzone" for="receiptInput" id="dropzone">
                 <input id="receiptInput" type="file" multiple accept="image/*,.pdf" />
                 <span class="drop-icon">+</span>
@@ -112,6 +140,7 @@
                   <span class="label">建议行程</span>
                   <h3 id="tripTitle">北京至上海客户拜访</h3>
                   <p id="tripSummary">2026-04-08 至 2026-04-10，已匹配出差审批。</p>
+                  <div class="route-insight" id="routeInsight">等待识别路线闭环</div>
                 </div>
 
                 <div class="metric-row">

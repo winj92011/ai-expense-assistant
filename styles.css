@@ -295,6 +295,37 @@ p {
   text-transform: none;
 }
 
+.base-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.base-picker label {
+  display: grid;
+  gap: 6px;
+}
+
+.base-picker span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.base-picker select {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 0 10px;
+}
+
 .dropzone {
   display: grid;
   place-items: center;
@@ -471,6 +502,18 @@ p {
   border-radius: 8px;
   border: 1px solid #d7e6ff;
   background: #edf4ff;
+}
+
+.route-insight {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 10px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .metric-row {
@@ -762,5 +805,9 @@ th {
   .assistant-panel,
   .draft-section {
     padding: 16px;
+  }
+
+  .base-picker {
+    grid-template-columns: 1fr;
   }
 }

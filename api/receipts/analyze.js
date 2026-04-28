@@ -6,6 +6,7 @@ export default async function handler(request, response) {
   }
 
   const files = Array.isArray(request.body?.files) ? request.body.files : [];
+  const travelBase = normalizeTravelBase(request.body?.travelBase);
   if (!files.length) {
     response.status(400).json({ error: "Missing receipt files" });
     return;
@@ -20,6 +21,7 @@ export default async function handler(request, response) {
         baseUrl: process.env.MOONSHOT_BASE_URL || "https://api.moonshot.ai/v1",
         model: process.env.KIMI_MODEL || "kimi-k2.5",
         files,
+        travelBase,
       });
       response.status(200).json({ ...normalizeModelResult(result, files), source: "kimi" });
       return;
@@ -42,6 +44,7 @@ export default async function handler(request, response) {
         baseUrl: process.env.VOLCENGINE_ARK_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3",
         model: process.env.VOLCENGINE_ARK_MODEL,
         files,
+        travelBase,
       });
       response.status(200).json({ ...normalizeModelResult(result, files), source: "volcengine" });
       return;
@@ -60,12 +63,21 @@ export default async function handler(request, response) {
   response.status(200).json({ ...createMockAnalysis(files), source: "mock" });
 }
 
-async function analyzeWithOpenAICompatible({ apiKey, baseUrl, model, files }) {
+function normalizeTravelBase(travelBase) {
+  const primary = String(travelBase?.primary || "").trim();
+  const secondary = String(travelBase?.secondary || "").trim();
+  return {
+    primary,
+    secondary: secondary && secondary !== primary ? secondary : "",
+  };
+}
+
+async function analyzeWithOpenAICompatible({ apiKey, baseUrl, model, files, travelBase }) {
   const imageFiles = files.filter((file) => String(file.type || "").startsWith("image/"));
   const content = [
     {
       type: "text",
-      text: buildPrompt(files),
+      text: buildPrompt(files, travelBase),
     },
     ...imageFiles.map((file) => ({
       type: "image_url",
@@ -108,12 +120,16 @@ function getModelTemperature(model) {
   return String(model || "").toLowerCase().includes("k2.6") ? 1 : 0.1;
 }
 
-function buildPrompt(files) {
+function buildPrompt(files, travelBase) {
   const fileList = files.map((file, index) => `${index + 1}. ${file.name} (${file.type || "unknown"})`).join("\n");
+  const baseCities = [travelBase?.primary, travelBase?.secondary].filter(Boolean).join("、") || "未提供";
   return `你是企业报销票据识别助手。请根据上传的票据图片提取报销信息，并生成结构化 JSON。
 
 文件列表：
 ${fileList}
+
+员工常驻出发地：
+${baseCities}
 
 要求：
 1. 只返回 JSON，不要输出解释性文字。
@@ -124,6 +140,9 @@ ${fileList}
 6. 机票/火车票优先提取航班或车次的出发日期、出发地、目的地、航班号/车次；invoice_date 单独填写开票日期。
 7. 住宿优先提取入住日期作为 date，invoice_date 单独填写开票日期。
 8. trip.start_date 和 trip.end_date 应根据出行/住宿/交通日期推断，不要根据开票日期推断。
+9. 根据员工常驻出发地判断闭环行程：如果路线从某个常驻出发地出发，经过一个或多个城市，最后回到同一常驻出发地，trip.is_closed_loop 填 true。
+10. 如果没有看到返程票据，但路线明显从常驻出发地开始，trip.is_closed_loop 填 false，并在 completeness_suggestions 提醒可能缺少返程票据；不得阻止提交。
+11. route_path 按时间顺序填写城市数组，例如 ["北京","上海","深圳","新加坡","北京"]。
 
 JSON 结构：
 {
@@ -132,6 +151,9 @@ JSON 结构：
     "to_city": null,
     "start_date": null,
     "end_date": null,
+    "base_city": null,
+    "is_closed_loop": false,
+    "route_path": [],
     "confidence": 0
   },
   "suggestedTitle": "",
@@ -171,12 +193,22 @@ function normalizeModelResult(result, files) {
   const normalized = result && typeof result === "object" ? result : {};
   const items = Array.isArray(normalized.items) ? normalized.items : [];
   return {
-    trip: normalized.trip || {},
+    trip: normalizeTrip(normalized.trip),
     suggestedTitle: normalized.suggestedTitle || "",
     summary: normalized.summary || "AI 已识别票据并生成报销草稿。",
     items: items.length ? items.map(normalizeItem) : createMockAnalysis(files).items,
     risk_flags: Array.isArray(normalized.risk_flags) ? normalized.risk_flags : [],
     completeness_suggestions: Array.isArray(normalized.completeness_suggestions) ? normalized.completeness_suggestions : [],
+  };
+}
+
+function normalizeTrip(trip) {
+  const normalized = trip && typeof trip === "object" ? trip : {};
+  return {
+    ...normalized,
+    base_city: normalized.base_city || null,
+    is_closed_loop: Boolean(normalized.is_closed_loop),
+    route_path: Array.isArray(normalized.route_path) ? normalized.route_path : [],
   };
 }
 
@@ -211,6 +243,9 @@ function createMockAnalysis(files) {
       to_city: "上海",
       start_date: "2026-04-08",
       end_date: "2026-04-10",
+      base_city: "北京",
+      is_closed_loop: false,
+      route_path: ["北京", "上海"],
       confidence: 0.6,
     },
     suggestedTitle: "北京至上海客户拜访",
