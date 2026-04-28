@@ -120,6 +120,10 @@ ${fileList}
 2. 不确定的字段填 null，不要编造票据上没有的信息。
 3. 如果文件不是图片或无法识别，请基于文件名给出低置信度草稿，并标记 status 为“需确认”。
 4. 如果可能遗漏住宿、本地交通、餐饮等票据，只放到 completeness_suggestions，不得阻止提交。
+5. date 必须优先填写实际消费、出行或履约日期，不要把开票日期当成报销明细日期。
+6. 机票/火车票优先提取航班或车次的出发日期、出发地、目的地、航班号/车次；invoice_date 单独填写开票日期。
+7. 住宿优先提取入住日期作为 date，invoice_date 单独填写开票日期。
+8. trip.start_date 和 trip.end_date 应根据出行/住宿/交通日期推断，不要根据开票日期推断。
 
 JSON 结构：
 {
@@ -135,8 +139,11 @@ JSON 结构：
   "items": [
     {
       "date": null,
+      "invoice_date": null,
       "category": "机票|火车票|住宿|本地交通|餐饮|办公|其他",
       "vendor": null,
+      "route": null,
+      "flight_or_train_no": null,
       "amount": null,
       "tax_amount": null,
       "invoice_number": null,
@@ -176,8 +183,11 @@ function normalizeModelResult(result, files) {
 function normalizeItem(item) {
   return {
     date: item.date || "",
+    invoice_date: item.invoice_date || item.invoiceDate || null,
     category: item.category || "其他",
     vendor: item.vendor || "待确认商户",
+    route: item.route || null,
+    flight_or_train_no: item.flight_or_train_no || item.flightNo || item.trainNo || null,
     amount: Number(item.amount || 0),
     tax_amount: item.tax_amount ?? null,
     invoice_number: item.invoice_number || null,

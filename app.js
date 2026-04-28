@@ -83,13 +83,19 @@ function renderDraft() {
       const statusClass = item.status.includes("需") ? "warn" : "ok";
       return `
         <tr>
-          <td><input class="cell-input" data-field="date" data-index="${index}" value="${item.date}" /></td>
+          <td>
+            <input class="cell-input" data-field="date" data-index="${index}" value="${item.date}" />
+            ${renderInvoiceDateNote(item)}
+          </td>
           <td>
             <select class="cell-select" data-field="category" data-index="${index}">
               ${renderCategoryOptions(item.category)}
             </select>
           </td>
-          <td><input class="cell-input" data-field="vendor" data-index="${index}" value="${item.vendor}" /></td>
+          <td>
+            <input class="cell-input" data-field="vendor" data-index="${index}" value="${item.vendor}" />
+            ${renderTravelNote(item)}
+          </td>
           <td><input class="cell-input" data-field="amount" data-index="${index}" type="number" min="0" step="1" value="${item.amount}" /></td>
           <td>
             <span class="${statusClass}">${item.status}</span>
@@ -247,6 +253,7 @@ document.querySelector("#exportBtn").addEventListener("click", () => {
       claim.title,
       claim.status,
       item.date,
+      item.invoice_date || "",
       item.category,
       item.vendor,
       item.amount,
@@ -258,12 +265,13 @@ document.querySelector("#exportBtn").addEventListener("click", () => {
     document.querySelector("#tripTitle").textContent,
     "草稿",
     item.date,
+    item.invoice_date || "",
     item.category,
     item.vendor,
     item.amount,
     item.status,
   ]);
-  const rows = [["报销单", "标题", "单据状态", "日期", "费用类型", "商户", "金额", "明细状态"], ...claimRows, ...draftRows];
+  const rows = [["报销单", "标题", "单据状态", "费用/行程日期", "开票日期", "费用类型", "商户", "金额", "明细状态"], ...claimRows, ...draftRows];
   const csv = rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\n");
   const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -446,11 +454,25 @@ function getSourceLabel(source) {
 function normalizeDraftItem(item, index) {
   return {
     date: item.date || `2026-04-${String(8 + Math.min(index, 2)).padStart(2, "0")}`,
+    invoice_date: item.invoice_date || item.invoiceDate || "",
     category: item.category || "其他",
     vendor: item.vendor || "待确认商户",
+    route: item.route || "",
+    flight_or_train_no: item.flight_or_train_no || item.flightNo || item.trainNo || "",
     amount: Number(item.amount || 0),
     status: item.status || (item.confidence && item.confidence < 0.7 ? "需确认" : "AI 已识别"),
   };
+}
+
+function renderInvoiceDateNote(item) {
+  if (!item.invoice_date || item.invoice_date === item.date) return "";
+  return `<div class="date-note">开票：${item.invoice_date}</div>`;
+}
+
+function renderTravelNote(item) {
+  const parts = [item.route, item.flight_or_train_no].filter(Boolean);
+  if (!parts.length) return "";
+  return `<div class="date-note">${parts.join(" · ")}</div>`;
 }
 
 function renderCategoryOptions(selected) {

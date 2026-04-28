@@ -561,6 +561,13 @@ th {
   font-weight: 700;
 }
 
+.date-note {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .approval-card {
   padding: 18px;
   box-shadow: none;
