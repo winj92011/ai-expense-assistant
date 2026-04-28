@@ -14,6 +14,7 @@ const thinkingState = document.querySelector("#thinkingState");
 const aiResult = document.querySelector("#aiResult");
 const draftSection = document.querySelector("#draftSection");
 const expenseRows = document.querySelector("#expenseRows");
+const aiSourceBadge = document.querySelector("#aiSourceBadge");
 const toast = document.querySelector("#toast");
 const loginStrip = document.querySelector("#loginStrip");
 const loginTitle = document.querySelector("#loginTitle");
@@ -131,6 +132,7 @@ async function analyzeReceipts() {
     renderDraft();
     renderFiles();
     renderDraftsView();
+    setAiSource("本地模拟", error.message || "AI 接口暂不可用");
     showToast("AI 接口暂不可用，已使用本地模拟结果");
   } finally {
     analyzeBtn.disabled = state.files.length === 0;
@@ -357,8 +359,16 @@ async function analyzeFiles(files) {
   });
   const data = await response.json();
 
-  if (!response.ok) {
+  if (!response.ok && !data.fallback) {
     throw new Error(data.error || "AI analysis failed");
+  }
+
+  if (!response.ok && data.fallback) {
+    return {
+      ...data.fallback,
+      source: "mock",
+      aiError: data.error || "AI analysis failed",
+    };
   }
 
   return data;
@@ -374,6 +384,8 @@ function readFileAsDataUrl(file) {
 }
 
 function applyAnalysisResult(result) {
+  setAiSource(getSourceLabel(result.source), result.aiError || "");
+
   const trip = result.trip || {};
   if (result.suggestedTitle) {
     document.querySelector("#tripTitle").textContent = result.suggestedTitle;
@@ -387,6 +399,18 @@ function applyAnalysisResult(result) {
 
   const items = Array.isArray(result.items) ? result.items : [];
   state.draftItems = items.length ? items.map(normalizeDraftItem) : createDraftItems(state.files);
+}
+
+function setAiSource(source, detail = "") {
+  aiSourceBadge.textContent = detail ? `${source} · 已兜底` : source;
+  aiSourceBadge.title = detail;
+}
+
+function getSourceLabel(source) {
+  if (source === "kimi") return "Kimi";
+  if (source === "volcengine") return "火山方舟";
+  if (source === "mock") return "模拟兜底";
+  return "AI";
 }
 
 function normalizeDraftItem(item, index) {

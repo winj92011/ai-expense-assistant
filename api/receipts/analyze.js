@@ -26,9 +26,10 @@ export default async function handler(request, response) {
     }
   } catch (error) {
     if (provider === "kimi") {
-      response.status(502).json({
-        error: error.message || "Kimi receipt analysis failed",
-        fallback: createMockAnalysis(files),
+      response.status(200).json({
+        ...createMockAnalysis(files),
+        source: "mock",
+        aiError: error.message || "Kimi receipt analysis failed",
       });
       return;
     }
@@ -47,9 +48,10 @@ export default async function handler(request, response) {
     }
   } catch (error) {
     if (provider === "volcengine") {
-      response.status(502).json({
-        error: error.message || "Volcengine receipt analysis failed",
-        fallback: createMockAnalysis(files),
+      response.status(200).json({
+        ...createMockAnalysis(files),
+        source: "mock",
+        aiError: error.message || "Volcengine receipt analysis failed",
       });
       return;
     }
