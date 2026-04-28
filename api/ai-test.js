@@ -29,7 +29,7 @@ export default async function handler(request, response) {
             content: "只返回 JSON：{\"ok\":true,\"purpose\":\"ai-expense-debug\"}",
           },
         ],
-        temperature: 0,
+        temperature: String(kimiModel || "").toLowerCase().includes("k2.6") ? 1 : 0,
       }),
     });
 

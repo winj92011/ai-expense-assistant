@@ -89,7 +89,7 @@ async function analyzeWithOpenAICompatible({ apiKey, baseUrl, model, files }) {
           content,
         },
       ],
-      temperature: 0.1,
+      temperature: getModelTemperature(model),
     }),
   });
 
@@ -102,6 +102,10 @@ async function analyzeWithOpenAICompatible({ apiKey, baseUrl, model, files }) {
   if (!text) throw new Error("Empty model response");
 
   return parseJsonResponse(text);
+}
+
+function getModelTemperature(model) {
+  return String(model || "").toLowerCase().includes("k2.6") ? 1 : 0.1;
 }
 
 function buildPrompt(files) {

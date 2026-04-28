@@ -35,7 +35,7 @@ export async function analyzeReceiptsWithKimi({ images, apiKey, model = "kimi-k2
           content,
         },
       ],
-      temperature: 0.1,
+      temperature: String(model || "").toLowerCase().includes("k2.6") ? 1 : 0.1,
     }),
   });
 
