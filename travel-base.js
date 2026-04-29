@@ -58,6 +58,23 @@
       font-size: 13px;
       font-weight: 700;
     }
+    .route-segment-status {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .route-segment-status.covered {
+      background: #ecfdf5;
+      color: var(--green);
+    }
+    .route-segment-status.missing {
+      background: #fff7ed;
+      color: var(--amber);
+    }
     .route-segment-items {
       display: flex;
       flex-wrap: wrap;
@@ -176,6 +193,17 @@
     return segments;
   }
 
+  function hasTransit(item) {
+    return ["机票", "火车票", "高铁票", "交通"].includes(item.category) && Boolean(item.route);
+  }
+
+  function getSegmentStatus(segment) {
+    const covered = segment.items.some(hasTransit);
+    return covered
+      ? { label: "已覆盖", className: "covered" }
+      : { label: "建议补充交通票", className: "missing" };
+  }
+
   function renderRouteBreakdown() {
     document.querySelector(".route-breakdown")?.remove();
 
@@ -188,6 +216,7 @@
     view.innerHTML = segments
       .map((segment) => {
         const total = segment.items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+        const status = getSegmentStatus(segment);
         const itemText = segment.items.length
           ? segment.items.map((item) => `<span>${item.category} · ${item.vendor}</span>`).join("")
           : "<span>待补充票据</span>";
@@ -197,6 +226,7 @@
               <strong>${segment.label}</strong>
               <span>${segment.items.length} 项 · ${money(total)}</span>
             </div>
+            <div class="route-segment-status ${status.className}">${status.label}</div>
             <div class="route-segment-items">${itemText}</div>
           </article>
         `;
