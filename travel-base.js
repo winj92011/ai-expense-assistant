@@ -103,6 +103,39 @@
       font-size: 13px;
       line-height: 1.55;
     }
+    .review-transfer-card {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid #d7e6ff;
+      border-radius: 8px;
+      background: #f8fbff;
+    }
+    .review-transfer-card strong {
+      color: var(--ink);
+      font-size: 14px;
+    }
+    .review-transfer-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .review-transfer-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .review-transfer-grid span {
+      display: block;
+      padding: 8px;
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
     .route-segment {
       display: grid;
       gap: 8px;
@@ -168,10 +201,14 @@
       grid-column: 1 / -1;
       width: 100%;
     }
-    @media (max-width: 760px) { .finance-readiness-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 760px) {
+      .finance-readiness-grid,
+      .review-transfer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
     @media (max-width: 560px) {
       .test-trip-panel { grid-template-columns: 1fr; }
-      .finance-readiness-grid { grid-template-columns: 1fr; }
+      .finance-readiness-grid,
+      .review-transfer-grid { grid-template-columns: 1fr; }
     }
   `;
   document.head.appendChild(style);
@@ -233,6 +270,7 @@
   let latestTrip = null;
   let latestItems = [];
   let latestSuggestions = [];
+  let latestReviewSummary = null;
 
   const originalApplyAnalysisResult = window.applyAnalysisResult;
   const originalRenderDraft = window.renderDraft;
@@ -318,6 +356,12 @@
     };
   }
 
+  function reviewSummary() {
+    if (latestReviewSummary) return latestReviewSummary;
+    const segments = attachItems(getSegments(latestTrip), latestItems);
+    return segments.length ? routeSummary(segments) : null;
+  }
+
   function renderFinanceReadiness(segments) {
     const summary = routeSummary(segments);
     return `
@@ -351,6 +395,7 @@
 
     const view = document.createElement("div");
     view.className = "route-breakdown";
+    latestReviewSummary = routeSummary(segments);
     view.innerHTML = renderFinanceReadiness(segments) + segments
       .map((segment) => {
         const total = segment.items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
@@ -381,6 +426,7 @@
     latestSuggestions = Array.isArray(result?.completeness_suggestions)
       ? result.completeness_suggestions.filter(Boolean)
       : [];
+    latestReviewSummary = null;
     return originalApplyAnalysisResult(result);
   };
 
@@ -389,6 +435,48 @@
     renderRouteBreakdown();
     return output;
   };
+
+  function renderTransferCard() {
+    const summary = reviewSummary();
+    if (!summary) return "";
+
+    return `
+      <div class="review-transfer-card">
+        <strong>行程复核摘要</strong>
+        <p>${summary.routePath}</p>
+        <div class="review-transfer-grid">
+          <span>闭环：${latestTrip?.is_closed_loop ? "已闭环" : "未闭环"}</span>
+          <span>覆盖：${summary.coverageText}</span>
+          <span>金额：${money(summary.total)}</span>
+          <span>本地：${summary.localText}</span>
+        </div>
+        <p>${summary.suggestionText}</p>
+      </div>
+    `;
+  }
+
+  function attachReviewSummaryToQueue() {
+    const cardHtml = renderTransferCard();
+    if (!cardHtml) return;
+
+    const approvalCard = document.querySelector("#approvalsView .queue-card");
+    if (approvalCard && !approvalCard.querySelector(".review-transfer-card")) {
+      approvalCard.querySelector("div")?.insertAdjacentHTML("beforeend", cardHtml);
+    }
+
+    const financeCard = document.querySelector("#financeList .queue-card");
+    if (financeCard && !financeCard.querySelector(".review-transfer-card")) {
+      financeCard.querySelector("div")?.insertAdjacentHTML("beforeend", cardHtml);
+    }
+  }
+
+  document.querySelector("#submitDraftBtn")?.addEventListener("click", () => {
+    window.setTimeout(attachReviewSummaryToQueue, 0);
+  });
+
+  document.querySelectorAll("[data-view]").forEach((button) => {
+    button.addEventListener("click", () => window.setTimeout(attachReviewSummaryToQueue, 0));
+  });
 })();
 
 (() => {
