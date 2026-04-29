@@ -45,6 +45,14 @@
         background: rgba(255, 255, 255, 0.96);
       }
 
+      .finance-pack-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
       .finance-pack-head h2,
       .finance-pack-section h3 {
         margin: 0;
@@ -246,6 +254,46 @@
       .join("");
   }
 
+  function csvEscape(value) {
+    return `"${String(value ?? "").replaceAll('"', '""')}"`;
+  }
+
+  function exportVoucherPack(claim) {
+    const coverage = routeCoverage(claim);
+    const rows = [
+      ["凭证包", claim.title],
+      ["单据状态", claim.status],
+      ["行程路线", coverage.route],
+      ["票据数量", claim.count],
+      ["合计金额", claim.total],
+      ["行程闭环", coverage.closed ? "已闭环" : "未闭环"],
+      ["路段覆盖", `${coverage.covered}/${coverage.expected}`],
+      ["本地凭证", coverage.local.join("、") || "暂无"],
+      [],
+      ["处理节点", "处理人", "状态", "时间"],
+      ...ensureTimeline(claim).map((item) => [item.step, item.actor, item.status, item.at]),
+      [],
+      ["日期", "类型", "商户/承运方", "路线", "班次", "金额", "状态"],
+      ...claim.items.map((item) => [
+        item.date || "",
+        item.category || "其他",
+        item.vendor || "",
+        item.route || "",
+        item.flight_or_train_no || "",
+        item.amount || 0,
+        item.status || "已识别",
+      ]),
+    ];
+    const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${claim.title || "finance-pack"}-凭证包.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   function openPack(claimId) {
     const claim = state.submittedClaims.find((item) => item.id === claimId);
     if (!claim) return;
@@ -262,7 +310,10 @@
             <p>${coverage.route} · ${claim.count} 张票据 · ${money(claim.total)}</p>
             ${paid ? '<span class="pack-status-line">报销闭环已完成，可归档</span>' : ""}
           </div>
-          <button class="secondary-button" type="button" data-close-pack>关闭</button>
+          <div class="finance-pack-actions">
+            <button class="secondary-button" type="button" data-export-pack="${claim.id}">导出凭证包</button>
+            <button class="secondary-button" type="button" data-close-pack>关闭</button>
+          </div>
         </div>
         <div class="finance-pack-body">
           <section class="finance-pack-section">
@@ -361,9 +412,17 @@
   };
 
   document.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-detail-claim]");
-    if (!button) return;
-    openPack(button.dataset.detailClaim);
+    const detailButton = event.target.closest("[data-detail-claim]");
+    if (detailButton) {
+      openPack(detailButton.dataset.detailClaim);
+      return;
+    }
+
+    const exportButton = event.target.closest("[data-export-pack]");
+    if (exportButton) {
+      const claim = state.submittedClaims.find((item) => item.id === exportButton.dataset.exportPack);
+      if (claim) exportVoucherPack(claim);
+    }
   });
 
   installStyle();
