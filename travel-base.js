@@ -13,6 +13,25 @@
     .route-insight.base { background: #ffffff; color: var(--blue); }
     .completeness-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     .compact-button { min-height: 34px; padding: 0 12px; font-size: 13px; }
+    .test-trip-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 10px;
+      border: 1px dashed #bfd5ff;
+      border-radius: 8px;
+      background: #f8fbff;
+    }
+    .test-trip-panel select {
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--ink);
+      padding: 0 10px;
+    }
+    @media (max-width: 560px) { .test-trip-panel { grid-template-columns: 1fr; } }
   `;
   document.head.appendChild(style);
 
@@ -67,6 +86,134 @@
     subtree: true,
   });
   setInsight(insight.textContent);
+})();
+
+(() => {
+  const uploadPanel = document.querySelector(".upload-panel");
+  const basePicker = document.querySelector(".base-picker");
+  const thinkingState = document.querySelector("#thinkingState");
+  const aiResult = document.querySelector("#aiResult");
+  const draftSection = document.querySelector("#draftSection");
+
+  if (
+    !uploadPanel ||
+    !basePicker ||
+    typeof window.applyAnalysisResult !== "function" ||
+    typeof window.renderDraft !== "function" ||
+    typeof window.renderFiles !== "function" ||
+    typeof window.renderDraftsView !== "function"
+  ) {
+    return;
+  }
+
+  const panel = document.createElement("div");
+  panel.className = "test-trip-panel";
+  panel.innerHTML = `
+    <select aria-label="测试行程">
+      <option value="closed">测试闭环：北京-上海-深圳-新加坡-北京</option>
+      <option value="open">测试缺返程：北京-吉隆坡-重庆</option>
+    </select>
+    <button class="secondary-button compact-button" type="button">使用测试行程</button>
+  `;
+  basePicker.insertAdjacentElement("afterend", panel);
+
+  const presetSelect = panel.querySelector("select");
+  const presetButton = panel.querySelector("button");
+
+  function buildPreset(type) {
+    if (type === "closed") {
+      return {
+        source: "mock",
+        suggestedTitle: "北京-上海-深圳-新加坡闭环差旅",
+        summary: "2026-04-08 至 2026-04-14，已形成从北京出发并返回北京的闭环行程。",
+        trip: {
+          from_city: "北京",
+          to_city: "北京",
+          base_city: "北京",
+          route_path: ["北京", "上海", "深圳", "新加坡", "北京"],
+          is_closed_loop: true,
+        },
+        completeness_suggestions: ["行程已形成闭环。如仍有零散票据，也可以继续补充。"],
+        items: [
+          {
+            date: "2026-04-08",
+            category: "机票",
+            vendor: "中国国际航空",
+            route: "北京-上海",
+            flight_or_train_no: "CA1501",
+            amount: 1260,
+            status: "测试行程",
+          },
+          {
+            date: "2026-04-10",
+            category: "火车票",
+            vendor: "铁路 12306",
+            route: "上海-深圳",
+            flight_or_train_no: "G99",
+            amount: 568,
+            status: "测试行程",
+          },
+          {
+            date: "2026-04-12",
+            category: "机票",
+            vendor: "新加坡航空",
+            route: "深圳-新加坡",
+            flight_or_train_no: "SQ857",
+            amount: 2180,
+            status: "测试行程",
+          },
+          {
+            date: "2026-04-14",
+            category: "机票",
+            vendor: "中国国际航空",
+            route: "新加坡-北京",
+            flight_or_train_no: "CA970",
+            amount: 2460,
+            status: "测试行程",
+          },
+        ],
+      };
+    }
+
+    return {
+      source: "mock",
+      suggestedTitle: "北京-吉隆坡-重庆差旅",
+      summary: "当前仅识别到去程和中转段，未形成返回北京的闭环。",
+      trip: {
+        from_city: "北京",
+        to_city: "重庆",
+        base_city: "北京",
+        route_path: ["北京", "吉隆坡", "重庆"],
+        is_closed_loop: false,
+      },
+      completeness_suggestions: [
+        "当前行程未形成闭环，可能缺少从重庆或后续目的地返回北京的返程交通票据；如确实无需补充，可点击已知晓后继续提交。",
+      ],
+      items: [
+        {
+          date: "2025-10-12",
+          invoice_date: "2026-01-27",
+          category: "机票",
+          vendor: "上海华程西南国际旅行社有限公司",
+          route: "吉隆坡-重庆",
+          flight_or_train_no: "MF8688",
+          amount: 2889,
+          status: "测试行程",
+        },
+      ],
+    };
+  }
+
+  presetButton.addEventListener("click", () => {
+    thinkingState?.classList.add("hidden");
+    aiResult?.classList.remove("hidden");
+    draftSection?.classList.remove("hidden");
+
+    window.applyAnalysisResult(buildPreset(presetSelect.value));
+    window.renderDraft();
+    window.renderFiles();
+    window.renderDraftsView();
+  });
 })();
 
 (() => {
