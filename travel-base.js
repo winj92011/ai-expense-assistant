@@ -11,6 +11,8 @@
     .route-insight.closed { background: #eefbf6; color: var(--green); }
     .route-insight.open { background: #fff8ef; color: var(--amber); }
     .route-insight.base { background: #ffffff; color: var(--blue); }
+    .completeness-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .compact-button { min-height: 34px; padding: 0 12px; font-size: 13px; }
   `;
   document.head.appendChild(style);
 
@@ -70,16 +72,57 @@
 (() => {
   const originalApplyAnalysisResult = window.applyAnalysisResult;
   const originalGetCompletenessText = window.getCompletenessText;
+  const fileInput = document.querySelector("#receiptInput");
+  const completenessBox = document.querySelector(".completeness-box");
+  const completenessText = document.querySelector("#completenessText");
   let suggestions = [];
 
-  if (typeof originalApplyAnalysisResult !== "function" || typeof originalGetCompletenessText !== "function") return;
+  if (
+    typeof originalApplyAnalysisResult !== "function" ||
+    typeof originalGetCompletenessText !== "function" ||
+    !completenessBox ||
+    !completenessText
+  ) {
+    return;
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "completeness-actions hidden";
+  actions.innerHTML = `
+    <button class="secondary-button compact-button" type="button" data-completeness-upload>继续上传票据</button>
+    <button class="secondary-button compact-button" type="button" data-completeness-ack>已知晓</button>
+  `;
+  completenessBox.appendChild(actions);
+
+  function shouldShowActions(text) {
+    return /缺少|返程|补充|开放行程|未形成闭环/.test(text);
+  }
+
+  function refreshActions() {
+    const text = completenessText.textContent || "";
+    actions.classList.toggle("hidden", !shouldShowActions(text));
+  }
+
+  actions.addEventListener("click", (event) => {
+    if (event.target.closest("[data-completeness-upload]")) {
+      fileInput?.click();
+      return;
+    }
+
+    if (event.target.closest("[data-completeness-ack]")) {
+      completenessText.textContent = "已记录：本次行程可能仍有未上传票据，但不影响当前报销提交。";
+      actions.classList.add("hidden");
+    }
+  });
 
   window.applyAnalysisResult = function patchedApplyAnalysisResult(result) {
     suggestions = Array.isArray(result?.completeness_suggestions)
       ? result.completeness_suggestions.filter(Boolean)
       : [];
 
-    return originalApplyAnalysisResult(result);
+    const output = originalApplyAnalysisResult(result);
+    window.setTimeout(refreshActions, 0);
+    return output;
   };
 
   window.getCompletenessText = function patchedGetCompletenessText() {
