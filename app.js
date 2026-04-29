@@ -213,12 +213,12 @@ document.querySelector("#submitDraftBtn").addEventListener("click", () => {
     total,
     count: state.draftItems.length,
     items: state.draftItems.map((item) => ({ ...item })),
-    status: "已提交",
+    status: "待主管审批",
   };
   state.submittedClaims.unshift(claim);
   state.claimStatus = "submitted";
   renderDraftsView();
-  renderApprovalsView(claim);
+  renderApprovalsView();
   renderFinanceView();
   showToast("已提交审批");
 });
@@ -246,6 +246,34 @@ expenseRows.addEventListener("change", (event) => {
   state.draftItems[index][field] = field === "amount" ? Number(event.target.value || 0) : event.target.value;
   renderDraft();
   renderDraftsView();
+});
+
+approvalsView.addEventListener("click", (event) => {
+  const approveButton = event.target.closest("[data-approve-claim]");
+  if (!approveButton) return;
+
+  const claim = state.submittedClaims.find((item) => item.id === approveButton.dataset.approveClaim);
+  if (!claim) return;
+
+  claim.status = "待财务复核";
+  renderDraftsView();
+  renderApprovalsView();
+  renderFinanceView();
+  showToast("主管已同意，已进入财务复核");
+});
+
+financeList.addEventListener("click", (event) => {
+  const reviewButton = event.target.closest("[data-review-claim]");
+  if (!reviewButton) return;
+
+  const claim = state.submittedClaims.find((item) => item.id === reviewButton.dataset.reviewClaim);
+  if (!claim) return;
+
+  claim.status = "已复核待付款";
+  renderDraftsView();
+  renderApprovalsView();
+  renderFinanceView();
+  showToast("财务已复核，进入待付款");
 });
 
 document.querySelector("#exportBtn").addEventListener("click", () => {
@@ -604,26 +632,45 @@ function renderDraftsView() {
   draftsView.innerHTML = `<div class="queue-list">${currentDraft}${submitted}</div>`;
 }
 
-function renderApprovalsView(claim) {
+function renderApprovalsView() {
+  const pendingClaims = state.submittedClaims.filter((claim) => claim.status === "待主管审批");
+
+  if (!pendingClaims.length) {
+    approvalsView.innerHTML = `
+      <div class="empty-state">
+        <h2>暂无待处理审批</h2>
+        <p>主管同意后，单据会流转到财务复核。</p>
+      </div>
+    `;
+    return;
+  }
+
   approvalsView.innerHTML = `
     <div class="queue-list">
-      <article class="queue-card">
-        <div>
-          <span class="label">飞书卡片预览</span>
-          <h2>吴经理提交了 ${formatCurrency(claim.total)} 差旅报销</h2>
-          <p>${claim.title}，${claim.count} 张票据，${getRiskCount()} 项需要确认。</p>
-        </div>
-        <div class="action-group">
-          <button class="secondary-button" type="button">查看详情</button>
-          <button class="primary-button" type="button">同意</button>
-        </div>
-      </article>
+      ${pendingClaims
+        .map(
+          (claim) => `
+            <article class="queue-card">
+              <div>
+                <span class="label">飞书卡片预览</span>
+                <h2>吴经理提交了 ${formatCurrency(claim.total)} 差旅报销</h2>
+                <p>${claim.title}，${claim.count} 张票据，${claim.items.filter((item) => item.status.includes("需")).length} 项需要确认。</p>
+              </div>
+              <div class="action-group">
+                <button class="secondary-button" type="button">查看详情</button>
+                <button class="primary-button" type="button" data-approve-claim="${claim.id}">同意</button>
+              </div>
+            </article>
+          `,
+        )
+        .join("")}
     </div>
   `;
 }
 
 function renderFinanceView() {
-  const claims = state.submittedClaims;
+  const claims = state.submittedClaims.filter((claim) => claim.status === "待财务复核");
+  const reviewedClaims = state.submittedClaims.filter((claim) => claim.status === "已复核待付款");
   const total = claims.reduce((sum, claim) => sum + claim.total, 0);
   const totalItems = claims.reduce((sum, claim) => sum + claim.items.length, 0);
   const riskyItems = claims.reduce(
@@ -635,17 +682,17 @@ function renderFinanceView() {
   document.querySelector("#financeTotalAmount").textContent = formatCurrency(total);
   document.querySelector("#financeRiskRate").textContent = totalItems ? `${Math.round((riskyItems / totalItems) * 100)}%` : "0%";
 
-  if (!claims.length) {
+  if (!claims.length && !reviewedClaims.length) {
     financeList.innerHTML = `
       <div class="empty-state compact">
         <h2>暂无待复核报销</h2>
-        <p>员工提交后会出现在这里。</p>
+        <p>主管同意后会出现在这里。</p>
       </div>
     `;
     return;
   }
 
-  financeList.innerHTML = claims
+  const pendingHtml = claims
     .map(
       (claim) => `
         <article class="queue-card">
@@ -656,10 +703,29 @@ function renderFinanceView() {
           </div>
           <div class="action-group">
             <button class="secondary-button" type="button">查看明细</button>
-            <button class="primary-button" type="button">标记已复核</button>
+            <button class="primary-button" type="button" data-review-claim="${claim.id}">标记已复核</button>
           </div>
         </article>
       `,
     )
     .join("");
+
+  const reviewedHtml = reviewedClaims
+    .map(
+      (claim) => `
+        <article class="queue-card">
+          <div>
+            <span class="label">已复核待付款</span>
+            <h2>${claim.title}</h2>
+            <p>${claim.count} 张票据，合计 ${formatCurrency(claim.total)}</p>
+          </div>
+          <div class="action-group">
+            <button class="secondary-button" type="button">查看明细</button>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+
+  financeList.innerHTML = `${pendingHtml}${reviewedHtml}`;
 }
