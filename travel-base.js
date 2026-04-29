@@ -93,6 +93,12 @@
       font-size: 12px;
       font-weight: 700;
     }
+    #draftSection.route-view .draft-content {
+      grid-template-columns: 1fr;
+    }
+    #draftSection.route-view .approval-card {
+      max-width: 100%;
+    }
     @media (max-width: 560px) { .test-trip-panel { grid-template-columns: 1fr; } }
   `;
   document.head.appendChild(style);
@@ -221,8 +227,10 @@
   function renderRouteBreakdown() {
     document.querySelector(".route-breakdown")?.remove();
 
+    const draftSection = document.querySelector("#draftSection");
     const tableWrap = document.querySelector(".table-wrap");
     const segments = attachItems(getSegments(latestTrip), latestItems);
+    draftSection?.classList.toggle("route-view", Boolean(segments.length));
     if (!tableWrap || !segments.length) return;
 
     const view = document.createElement("div");
