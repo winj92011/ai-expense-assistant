@@ -1,11 +1,10 @@
 (() => {
-  const AUDIT_STYLE_ID = "audit-trail-style";
+  const STYLE_ID = "audit-trail-style";
 
-  function installAuditStyle() {
-    if (document.querySelector(`#${AUDIT_STYLE_ID}`)) return;
-
+  function installStyle() {
+    if (document.querySelector(`#${STYLE_ID}`)) return;
     const style = document.createElement("style");
-    style.id = AUDIT_STYLE_ID;
+    style.id = STYLE_ID;
     style.textContent = `
       .audit-trail {
         display: flex;
@@ -32,7 +31,7 @@
     document.head.appendChild(style);
   }
 
-  function formatAuditTime() {
+  function timeLabel() {
     return new Intl.DateTimeFormat("zh-CN", {
       month: "2-digit",
       day: "2-digit",
@@ -41,59 +40,48 @@
     }).format(new Date());
   }
 
-  function addStep(claim, step, actor, status) {
+  function ensureStep(claim, step, actor, status) {
     claim.timeline = claim.timeline || [];
-    if (claim.timeline.some((item) => item.step === step)) return;
-    claim.timeline.push({ step, actor, status, at: formatAuditTime() });
+    if (!claim.timeline.some((item) => item.step === step)) {
+      claim.timeline.push({ step, actor, status, at: timeLabel() });
+    }
   }
 
   function hydrateTimeline(claim) {
-    addStep(claim, "员工提交", "吴经理", "已提交");
-
+    ensureStep(claim, "员工提交", "吴经理", "已提交");
     if (["待财务复核", "待出纳付款", "已复核待付款", "已付款"].includes(claim.status)) {
-      addStep(claim, "主管审批", "主管", "同意");
+      ensureStep(claim, "主管审批", "主管", "同意");
     }
-
     if (["待出纳付款", "已复核待付款", "已付款"].includes(claim.status)) {
-      addStep(claim, "财务复核", "财务", "已复核");
+      ensureStep(claim, "财务复核", "财务", "已复核");
     }
-
     if (claim.status === "已付款") {
-      addStep(claim, "出纳付款", "出纳", "已付款");
+      ensureStep(claim, "出纳付款", "出纳", "已付款");
     }
   }
 
-  function hydrateAllTimelines() {
+  function hydrateAll() {
     state.submittedClaims.forEach(hydrateTimeline);
   }
 
-  function renderAuditTrail(claim) {
+  function auditTrail(claim) {
     hydrateTimeline(claim);
-
     return `
       <div class="audit-trail">
         ${(claim.timeline || [])
-          .map(
-            (item) => `
-              <span>
-                <strong>${item.step}</strong>
-                ${item.actor} · ${item.status} · ${item.at}
-              </span>
-            `,
-          )
+          .map((item) => `<span><strong>${item.step}</strong>${item.actor} · ${item.status} · ${item.at}</span>`)
           .join("")}
       </div>
     `;
   }
 
-  function getTimelineText(claim) {
+  function timelineText(claim) {
     hydrateTimeline(claim);
     return (claim.timeline || []).map((item) => `${item.step}/${item.actor}/${item.status}/${item.at}`).join(" | ");
   }
 
   window.renderDraftsView = function renderDraftsViewWithAudit() {
-    hydrateAllTimelines();
-
+    hydrateAll();
     if (!state.draftItems.length && !state.submittedClaims.length) {
       draftsView.innerHTML = `
         <div class="empty-state">
@@ -125,7 +113,7 @@
               <span class="label">${claim.status}</span>
               <h2>${claim.title}</h2>
               <p>${claim.count} 张票据，合计 ${formatCurrency(claim.total)}</p>
-              ${renderAuditTrail(claim)}
+              ${auditTrail(claim)}
             </div>
           </article>
         `,
@@ -136,9 +124,8 @@
   };
 
   window.renderApprovalsView = function renderApprovalsViewWithAudit() {
-    hydrateAllTimelines();
+    hydrateAll();
     const pendingClaims = state.submittedClaims.filter((claim) => claim.status === "待主管审批");
-
     if (!pendingClaims.length) {
       approvalsView.innerHTML = `
         <div class="empty-state">
@@ -159,7 +146,7 @@
                   <span class="label">飞书卡片预览</span>
                   <h2>吴经理提交了 ${formatCurrency(claim.total)} 差旅报销</h2>
                   <p>${claim.title}，${claim.count} 张票据，${claim.items.filter((item) => item.status.includes("需")).length} 项需要确认。</p>
-                  ${renderAuditTrail(claim)}
+                  ${auditTrail(claim)}
                 </div>
                 <div class="action-group">
                   <button class="secondary-button" type="button">查看详情</button>
@@ -173,107 +160,18 @@
     `;
   };
 
-  window.renderFinanceView = function renderFinanceViewWithAudit() {
-    hydrateAllTimelines();
-
-    const claims = state.submittedClaims.filter((claim) => claim.status === "待财务复核");
-    const paymentClaims = state.submittedClaims.filter(
-      (claim) => claim.status === "待出纳付款" || claim.status === "已复核待付款",
-    );
-    const paidClaims = state.submittedClaims.filter((claim) => claim.status === "已付款");
-    const total = claims.reduce((sum, claim) => sum + claim.total, 0);
-    const totalItems = claims.reduce((sum, claim) => sum + claim.items.length, 0);
-    const riskyItems = claims.reduce(
-      (sum, claim) => sum + claim.items.filter((item) => item.status.includes("需")).length,
-      0,
-    );
-
-    document.querySelector("#financePendingCount").textContent = String(claims.length);
-    document.querySelector("#financeTotalAmount").textContent = formatCurrency(total);
-    document.querySelector("#financeRiskRate").textContent = totalItems ? `${Math.round((riskyItems / totalItems) * 100)}%` : "0%";
-
-    if (!claims.length && !paymentClaims.length && !paidClaims.length) {
-      financeList.innerHTML = `
-        <div class="empty-state compact">
-          <h2>暂无待复核报销</h2>
-          <p>主管同意后会出现在这里。</p>
-        </div>
-      `;
-      return;
-    }
-
-    const pendingHtml = claims
-      .map(
-        (claim) => `
-          <article class="queue-card">
-            <div>
-              <span class="label">待财务复核</span>
-              <h2>${claim.title}</h2>
-              <p>${claim.count} 张票据，合计 ${formatCurrency(claim.total)}</p>
-              ${renderAuditTrail(claim)}
-            </div>
-            <div class="action-group">
-              <button class="secondary-button" type="button">查看明细</button>
-              <button class="primary-button" type="button" data-review-claim="${claim.id}">标记已复核</button>
-            </div>
-          </article>
-        `,
-      )
-      .join("");
-
-    const paymentHtml = paymentClaims
-      .map(
-        (claim) => `
-          <article class="queue-card">
-            <div>
-              <span class="label">待出纳付款</span>
-              <h2>${claim.title}</h2>
-              <p>${claim.count} 张票据，合计 ${formatCurrency(claim.total)}</p>
-              ${renderAuditTrail(claim)}
-            </div>
-            <div class="action-group">
-              <button class="secondary-button" type="button">查看明细</button>
-              <button class="primary-button" type="button" data-pay-claim="${claim.id}">确认付款</button>
-            </div>
-          </article>
-        `,
-      )
-      .join("");
-
-    const paidHtml = paidClaims
-      .map(
-        (claim) => `
-          <article class="queue-card">
-            <div>
-              <span class="label">已付款</span>
-              <h2>${claim.title}</h2>
-              <p>${claim.count} 张票据，合计 ${formatCurrency(claim.total)}</p>
-              ${renderAuditTrail(claim)}
-            </div>
-            <div class="action-group">
-              <button class="secondary-button" type="button">查看明细</button>
-            </div>
-          </article>
-        `,
-      )
-      .join("");
-
-    financeList.innerHTML = `${pendingHtml}${paymentHtml}${paidHtml}`;
-  };
-
   document.querySelector("#exportBtn").addEventListener(
     "click",
     (event) => {
       event.preventDefault();
       event.stopImmediatePropagation();
-      hydrateAllTimelines();
-
+      hydrateAll();
       const claimRows = state.submittedClaims.flatMap((claim) =>
         claim.items.map((item) => [
           claim.id,
           claim.title,
           claim.status,
-          getTimelineText(claim),
+          timelineText(claim),
           item.date,
           item.invoice_date || "",
           item.category,
@@ -311,9 +209,16 @@
     true,
   );
 
-  installAuditStyle();
-  hydrateAllTimelines();
+  function loadFinancePack() {
+    if (document.querySelector('script[src="./finance-pack.js"]')) return;
+    const script = document.createElement("script");
+    script.src = "./finance-pack.js";
+    document.body.appendChild(script);
+  }
+
+  installStyle();
+  hydrateAll();
   renderDraftsView();
   renderApprovalsView();
-  renderFinanceView();
+  loadFinancePack();
 })();
