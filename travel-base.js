@@ -75,6 +75,11 @@
       background: #fff7ed;
       color: var(--amber);
     }
+    .route-segment-reason {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
     .route-segment-items {
       display: flex;
       flex-wrap: wrap;
@@ -198,10 +203,19 @@
   }
 
   function getSegmentStatus(segment) {
-    const covered = segment.items.some(hasTransit);
+    const transit = segment.items.find(hasTransit);
+    const covered = Boolean(transit);
     return covered
-      ? { label: "已覆盖", className: "covered" }
-      : { label: "建议补充交通票", className: "missing" };
+      ? {
+          label: "已覆盖",
+          className: "covered",
+          reason: `已找到${transit.category}，可作为本段出行凭证。`,
+        }
+      : {
+          label: "建议补充交通票",
+          className: "missing",
+          reason: `未看到 ${segment.label} 的跨城交通票，建议补充对应机票或高铁票。`,
+        };
   }
 
   function renderRouteBreakdown() {
@@ -227,6 +241,7 @@
               <span>${segment.items.length} 项 · ${money(total)}</span>
             </div>
             <div class="route-segment-status ${status.className}">${status.label}</div>
+            <div class="route-segment-reason">${status.reason}</div>
             <div class="route-segment-items">${itemText}</div>
           </article>
         `;
