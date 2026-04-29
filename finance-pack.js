@@ -93,7 +93,8 @@
 
       .finance-pack-metrics span,
       .voucher-pack-table small,
-      .process-line small {
+      .process-line small,
+      .ledger-table small {
         display: block;
         color: var(--muted);
         font-size: 12px;
@@ -112,7 +113,8 @@
         margin-top: 12px;
       }
 
-      .archive-strip span {
+      .archive-strip span,
+      .ledger-pill {
         display: inline-flex;
         align-items: center;
         gap: 6px;
@@ -129,11 +131,81 @@
         font-size: 12px;
       }
 
-      .archive-strip .ready {
+      .archive-strip .ready,
+      .ledger-pill.ready {
         border-color: #bbf7d0;
         background: #f0fdf4;
         color: #047857;
         font-weight: 700;
+      }
+
+      .archive-ledger {
+        display: block;
+      }
+
+      .ledger-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+
+      .ledger-head h2 {
+        margin: 0;
+      }
+
+      .ledger-head p {
+        margin: 6px 0 0;
+        color: var(--muted);
+      }
+
+      .ledger-tools {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .ledger-search {
+        width: min(320px, 100%);
+        min-height: 40px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0 12px;
+        font: inherit;
+      }
+
+      .ledger-table-wrap {
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+      }
+
+      .ledger-table {
+        width: 100%;
+        min-width: 760px;
+        border-collapse: collapse;
+      }
+
+      .ledger-table th,
+      .ledger-table td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .ledger-table tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .ledger-table th {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        background: #fbfdff;
       }
 
       .process-line {
@@ -313,6 +385,17 @@
     return `"${String(value ?? "").replaceAll('"', '""')}"`;
   }
 
+  function downloadCsv(filename, rows) {
+    const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   function exportVoucherPack(claim) {
     const coverage = routeCoverage(claim);
     const archive = ensureArchiveInfo(claim);
@@ -342,14 +425,31 @@
         item.status || "已识别",
       ]),
     ];
-    const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\n");
-    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${archive.archiveNo}-${claim.title || "凭证包"}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadCsv(`${archive.archiveNo}-${claim.title || "凭证包"}.csv`, rows);
+  }
+
+  function exportArchiveLedger(claims) {
+    const rows = [
+      ["归档编号", "标题", "路线", "票据数", "金额", "会计入账", "单据状态", "本地凭证", "最后处理时间"],
+      ...claims.map((claim) => {
+        const archive = ensureArchiveInfo(claim);
+        const coverage = routeCoverage(claim);
+        const timeline = ensureTimeline(claim);
+        const lastStep = timeline[timeline.length - 1] || {};
+        return [
+          archive.archiveNo,
+          claim.title,
+          coverage.route,
+          claim.count,
+          claim.total,
+          archive.accountingStatus,
+          claim.status,
+          coverage.local.join("、") || "暂无",
+          lastStep.at || "",
+        ];
+      }),
+    ];
+    downloadCsv("报销归档台账.csv", rows);
   }
 
   function openPack(claimId) {
@@ -448,6 +548,56 @@
     `;
   }
 
+  function archiveSearchText(claim) {
+    const archive = ensureArchiveInfo(claim);
+    const coverage = routeCoverage(claim);
+    return [archive.archiveNo, claim.title, coverage.route, archive.accountingStatus, claim.status].join(" ").toLowerCase();
+  }
+
+  function renderArchiveLedger(paidClaims) {
+    if (!paidClaims.length) return "";
+    const query = (state.financeArchiveQuery || "").trim().toLowerCase();
+    const rows = paidClaims.filter((claim) => !query || archiveSearchText(claim).includes(query));
+    const total = rows.reduce((sum, claim) => sum + claim.total, 0);
+
+    return `
+      <section class="queue-card archive-ledger">
+        <div class="ledger-head">
+          <div>
+            <span class="label">已归档台账</span>
+            <h2>${rows.length} 笔报销 · ${money(total)}</h2>
+            <p>按归档号、路线、标题快速查询已付款凭证包。</p>
+          </div>
+          <div class="ledger-tools">
+            <input class="ledger-search" type="search" value="${state.financeArchiveQuery || ""}" placeholder="搜索归档号 / 路线" data-archive-search>
+            <button class="secondary-button" type="button" data-export-ledger>导出台账 CSV</button>
+          </div>
+        </div>
+        <div class="ledger-table-wrap">
+          <table class="ledger-table">
+            <thead><tr><th>归档号</th><th>报销事项</th><th>票据</th><th>金额</th><th>入账</th><th>操作</th></tr></thead>
+            <tbody>
+              ${rows.length ? rows.map((claim) => {
+                const archive = ensureArchiveInfo(claim);
+                const coverage = routeCoverage(claim);
+                return `
+                  <tr>
+                    <td><strong>${archive.archiveNo}</strong><small>${claim.status}</small></td>
+                    <td>${claim.title}<small>${coverage.route}</small></td>
+                    <td>${claim.count} 张<small>${coverage.local.join("、") || "暂无本地凭证"}</small></td>
+                    <td>${money(claim.total)}</td>
+                    <td><span class="ledger-pill ready">${archive.accountingStatus}</span></td>
+                    <td><button class="secondary-button" type="button" data-detail-claim="${claim.id}">查看凭证包</button></td>
+                  </tr>
+                `;
+              }).join("") : '<tr><td colspan="6">没有匹配的归档记录</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    `;
+  }
+
   window.renderFinanceView = function renderFinanceViewWithPack() {
     const reviewClaims = state.submittedClaims.filter((claim) => claim.status === "待财务复核");
     const paymentClaims = state.submittedClaims.filter((claim) => claim.status === "待出纳付款" || claim.status === "已复核待付款");
@@ -472,11 +622,24 @@
     }
 
     financeList.innerHTML = [
+      renderArchiveLedger(paidClaims),
       ...reviewClaims.map((claim) => renderClaimCard(claim, "待财务复核", { text: "标记已复核", attr: `data-review-claim="${claim.id}"` })),
       ...paymentClaims.map((claim) => renderClaimCard(claim, "待出纳付款", { text: "确认付款", attr: `data-pay-claim="${claim.id}"` })),
       ...paidClaims.map((claim) => renderClaimCard(claim, "已付款", null)),
     ].join("");
   };
+
+  document.addEventListener("input", (event) => {
+    const search = event.target.closest("[data-archive-search]");
+    if (!search) return;
+    state.financeArchiveQuery = search.value;
+    renderFinanceView();
+    const nextSearch = document.querySelector("[data-archive-search]");
+    if (nextSearch) {
+      nextSearch.focus();
+      nextSearch.selectionStart = nextSearch.selectionEnd = nextSearch.value.length;
+    }
+  });
 
   document.addEventListener("click", (event) => {
     const detailButton = event.target.closest("[data-detail-claim]");
@@ -489,6 +652,13 @@
     if (exportButton) {
       const claim = state.submittedClaims.find((item) => item.id === exportButton.dataset.exportPack);
       if (claim) exportVoucherPack(claim);
+      return;
+    }
+
+    const ledgerButton = event.target.closest("[data-export-ledger]");
+    if (ledgerButton) {
+      const paidClaims = state.submittedClaims.filter((claim) => claim.status === "已付款");
+      exportArchiveLedger(paidClaims);
     }
   });
 
