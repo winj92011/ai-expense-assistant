@@ -37,6 +37,72 @@
       margin-top: 14px;
       margin-bottom: 12px;
     }
+    .finance-readiness-card {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      background: #f8fbff;
+    }
+    .finance-readiness-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .finance-readiness-head h3 {
+      margin: 0;
+      font-size: 16px;
+      color: var(--ink);
+    }
+    .finance-readiness-head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .finance-readiness-score {
+      flex: 0 0 auto;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #ecfdf5;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .finance-readiness-score.warn {
+      background: #fff7ed;
+      color: var(--amber);
+    }
+    .finance-readiness-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .finance-readiness-grid div {
+      padding: 10px;
+      border: 1px solid #dbe7f7;
+      border-radius: 8px;
+      background: #ffffff;
+    }
+    .finance-readiness-grid span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .finance-readiness-grid strong {
+      display: block;
+      margin-top: 4px;
+      color: var(--ink);
+      font-size: 15px;
+    }
+    .finance-readiness-note {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
     .route-segment {
       display: grid;
       gap: 8px;
@@ -102,7 +168,11 @@
       grid-column: 1 / -1;
       width: 100%;
     }
-    @media (max-width: 560px) { .test-trip-panel { grid-template-columns: 1fr; } }
+    @media (max-width: 760px) { .finance-readiness-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 560px) {
+      .test-trip-panel { grid-template-columns: 1fr; }
+      .finance-readiness-grid { grid-template-columns: 1fr; }
+    }
   `;
   document.head.appendChild(style);
 
@@ -162,6 +232,7 @@
 (() => {
   let latestTrip = null;
   let latestItems = [];
+  let latestSuggestions = [];
 
   const originalApplyAnalysisResult = window.applyAnalysisResult;
   const originalRenderDraft = window.renderDraft;
@@ -227,6 +298,48 @@
         };
   }
 
+  function routeSummary(segments) {
+    const total = latestItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const missing = segments.filter((segment) => getSegmentStatus(segment).className === "missing");
+    const categories = new Set(latestItems.map((item) => item.category).filter(Boolean));
+    const hasLocalProof = ["住宿", "本地交通", "餐饮"].filter((category) => categories.has(category));
+    const isClosed = Boolean(latestTrip?.is_closed_loop);
+    const routePath = Array.isArray(latestTrip?.route_path) ? latestTrip.route_path.join(" → ") : "待识别";
+    const ready = isClosed && missing.length === 0;
+
+    return {
+      ready,
+      routePath,
+      total,
+      missingCount: missing.length,
+      coverageText: `${segments.length - missing.length}/${segments.length} 段`,
+      localText: hasLocalProof.length ? hasLocalProof.join("、") : "待补充",
+      suggestionText: latestSuggestions[0] || (ready ? "行程已形成闭环，关键票据已覆盖，可进入主管审批。" : "行程仍有未覆盖路段，建议补充后再进入财务复核。"),
+    };
+  }
+
+  function renderFinanceReadiness(segments) {
+    const summary = routeSummary(segments);
+    return `
+      <section class="finance-readiness-card">
+        <div class="finance-readiness-head">
+          <div>
+            <h3>财务复核摘要</h3>
+            <p>${summary.routePath}</p>
+          </div>
+          <span class="finance-readiness-score ${summary.ready ? "" : "warn"}">${summary.ready ? "可进入复核" : "建议补齐"}</span>
+        </div>
+        <div class="finance-readiness-grid">
+          <div><span>行程闭环</span><strong>${latestTrip?.is_closed_loop ? "已闭环" : "未闭环"}</strong></div>
+          <div><span>路段覆盖</span><strong>${summary.coverageText}</strong></div>
+          <div><span>票据金额</span><strong>${money(summary.total)}</strong></div>
+          <div><span>本地凭证</span><strong>${summary.localText}</strong></div>
+        </div>
+        <div class="finance-readiness-note">${summary.suggestionText}</div>
+      </section>
+    `;
+  }
+
   function renderRouteBreakdown() {
     document.querySelector(".route-breakdown")?.remove();
 
@@ -238,7 +351,7 @@
 
     const view = document.createElement("div");
     view.className = "route-breakdown";
-    view.innerHTML = segments
+    view.innerHTML = renderFinanceReadiness(segments) + segments
       .map((segment) => {
         const total = segment.items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
         const status = getSegmentStatus(segment);
@@ -265,6 +378,9 @@
   window.applyAnalysisResult = function patchedRouteApplyAnalysisResult(result) {
     latestTrip = result?.trip || null;
     latestItems = Array.isArray(result?.items) ? result.items : [];
+    latestSuggestions = Array.isArray(result?.completeness_suggestions)
+      ? result.completeness_suggestions.filter(Boolean)
+      : [];
     return originalApplyAnalysisResult(result);
   };
 
