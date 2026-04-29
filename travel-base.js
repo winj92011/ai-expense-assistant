@@ -73,9 +73,12 @@
   const originalApplyAnalysisResult = window.applyAnalysisResult;
   const originalGetCompletenessText = window.getCompletenessText;
   const fileInput = document.querySelector("#receiptInput");
+  const submitButton = document.querySelector("#submitDraftBtn");
   const completenessBox = document.querySelector(".completeness-box");
   const completenessText = document.querySelector("#completenessText");
+  const approvalNote = document.querySelector(".approval-card .soft-note");
   let suggestions = [];
+  let acknowledged = false;
 
   if (
     typeof originalApplyAnalysisResult !== "function" ||
@@ -98,9 +101,31 @@
     return /缺少|返程|补充|开放行程|未形成闭环/.test(text);
   }
 
+  function acknowledgementText() {
+    return "员工已确认：本次行程可能仍有未上传票据，仍继续提交当前报销。";
+  }
+
   function refreshActions() {
     const text = completenessText.textContent || "";
     actions.classList.toggle("hidden", !shouldShowActions(text));
+  }
+
+  function updateApprovalNote() {
+    if (!approvalNote) return;
+    approvalNote.textContent = acknowledged
+      ? acknowledgementText()
+      : "如果本次行程还有未上传票据，可以继续补充；也可以先提交当前报销。";
+  }
+
+  function appendSubmittedAcknowledgement() {
+    if (!acknowledged) return;
+    const approvalCard = document.querySelector("#approvalsView .queue-card");
+    if (!approvalCard || approvalCard.querySelector(".acknowledgement-note")) return;
+
+    const note = document.createElement("p");
+    note.className = "acknowledgement-note";
+    note.textContent = acknowledgementText();
+    approvalCard.querySelector("div")?.appendChild(note);
   }
 
   actions.addEventListener("click", (event) => {
@@ -110,15 +135,23 @@
     }
 
     if (event.target.closest("[data-completeness-ack]")) {
+      acknowledged = true;
       completenessText.textContent = "已记录：本次行程可能仍有未上传票据，但不影响当前报销提交。";
       actions.classList.add("hidden");
+      updateApprovalNote();
     }
   });
 
+  submitButton?.addEventListener("click", () => {
+    window.setTimeout(appendSubmittedAcknowledgement, 0);
+  });
+
   window.applyAnalysisResult = function patchedApplyAnalysisResult(result) {
+    acknowledged = false;
     suggestions = Array.isArray(result?.completeness_suggestions)
       ? result.completeness_suggestions.filter(Boolean)
       : [];
+    updateApprovalNote();
 
     const output = originalApplyAnalysisResult(result);
     window.setTimeout(refreshActions, 0);
