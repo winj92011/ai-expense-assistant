@@ -110,7 +110,7 @@
   panel.className = "test-trip-panel";
   panel.innerHTML = `
     <select aria-label="测试行程">
-      <option value="closed">测试闭环：北京-上海-深圳-新加坡-北京</option>
+      <option value="closed">测试闭环：北京-上海-深圳-香港-北京</option>
       <option value="open">测试缺返程：北京-吉隆坡-重庆</option>
     </select>
     <button class="secondary-button compact-button" type="button">使用测试行程</button>
@@ -124,16 +124,16 @@
     if (type === "closed") {
       return {
         source: "mock",
-        suggestedTitle: "北京-上海-深圳-新加坡闭环差旅",
-        summary: "2026-04-08 至 2026-04-14，已形成从北京出发并返回北京的闭环行程。",
+        suggestedTitle: "测试闭环：北京-上海-深圳-香港-北京",
+        summary: "从北京出发，经上海、深圳、香港，最后回到北京；包含城际交通、本地交通、住宿和餐饮凭证。",
         trip: {
           from_city: "北京",
           to_city: "北京",
           base_city: "北京",
-          route_path: ["北京", "上海", "深圳", "新加坡", "北京"],
+          route_path: ["北京", "上海", "深圳", "香港", "北京"],
           is_closed_loop: true,
         },
-        completeness_suggestions: ["行程已形成闭环。如仍有零散票据，也可以继续补充。"],
+        completeness_suggestions: ["测试闭环已完整：北京出发并返回北京，城际交通、住宿、本地交通和餐饮凭证均已覆盖。"],
         items: [
           {
             date: "2026-04-08",
@@ -146,29 +146,57 @@
           },
           {
             date: "2026-04-10",
-            category: "火车票",
-            vendor: "铁路 12306",
+            category: "机票",
+            vendor: "东方航空",
             route: "上海-深圳",
-            flight_or_train_no: "G99",
-            amount: 568,
+            flight_or_train_no: "MU5331",
+            amount: 1160,
             status: "测试行程",
           },
           {
             date: "2026-04-12",
-            category: "机票",
-            vendor: "新加坡航空",
-            route: "深圳-新加坡",
-            flight_or_train_no: "SQ857",
-            amount: 2180,
+            category: "火车票",
+            vendor: "广深港高铁",
+            route: "深圳-香港",
+            flight_or_train_no: "G6511",
+            amount: 75,
             status: "测试行程",
           },
           {
             date: "2026-04-14",
             category: "机票",
             vendor: "中国国际航空",
-            route: "新加坡-北京",
-            flight_or_train_no: "CA970",
-            amount: 2460,
+            route: "香港-北京",
+            flight_or_train_no: "CA112",
+            amount: 1980,
+            status: "测试行程",
+          },
+          {
+            date: "2026-04-08",
+            category: "住宿",
+            vendor: "上海静安商务酒店",
+            amount: 680,
+            status: "测试行程",
+          },
+          {
+            date: "2026-04-11",
+            category: "住宿",
+            vendor: "深圳南山商务酒店",
+            amount: 620,
+            status: "测试行程",
+          },
+          {
+            date: "2026-04-12",
+            category: "本地交通",
+            vendor: "深圳出租车",
+            amount: 86,
+            status: "测试行程",
+          },
+          {
+            date: "2026-04-13",
+            category: "餐饮",
+            vendor: "香港客户工作餐",
+            amount: 312,
             status: "测试行程",
           },
         ],
