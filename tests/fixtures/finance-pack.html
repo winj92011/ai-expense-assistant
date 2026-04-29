@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Finance Pack E2E</title>
+    <style>
+      :root { --line:#cfd8e6; --ink:#172033; --muted:#677184; --surface:#fff; --green:#14a06f; --amber:#bc6c25; --blue:#1f6feb; --red:#d94848; --shadow:0 12px 30px rgba(23,32,51,.07); }
+      body { margin: 0; padding: 24px; font-family: Arial, "Microsoft YaHei", sans-serif; color: var(--ink); background: #f2f5fa; }
+      button, input, textarea { font: inherit; }
+      .primary-button,.secondary-button{min-height:40px;border-radius:8px;border:1px solid var(--line);padding:0 15px;font-weight:700;background:#fff;color:var(--ink)}
+      .primary-button{background:var(--blue);border-color:var(--blue);color:#fff}.action-group{display:flex;gap:10px;flex-wrap:wrap}.label{color:var(--muted);font-size:12px;font-weight:700}.finance-list{display:grid;gap:12px}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff}table{width:100%;border-collapse:collapse}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left}.soft-note{padding:12px;border-radius:8px;background:#f4f8ff;color:var(--muted)}.audit-trail{display:flex;gap:8px;flex-wrap:wrap}.audit-trail span{padding:6px 8px;border-radius:999px;background:#eef5ff;color:var(--muted);font-size:12px}.toast{display:none}
+      .e2e-panel{margin-bottom:18px;padding:16px;border:1px solid var(--line);border-radius:8px;background:#fff}.e2e-panel form{display:grid;gap:10px;max-width:360px}.e2e-panel label{display:grid;gap:5px;color:var(--muted);font-size:12px;font-weight:700}.e2e-panel input{min-height:36px;border:1px solid var(--line);border-radius:8px;padding:0 10px}
+    </style>
+  </head>
+  <body>
+    <section class="e2e-panel" aria-label="E2E 测试入口">
+      <h2>新增测试报销</h2>
+      <form id="e2eClaimForm">
+        <label>标题<input name="title" value="E2E 财务凭证包报销" /></label>
+        <label>商户<input name="vendor" value="E2E 出行平台" /></label>
+        <label>金额<input name="amount" type="number" min="1" value="256" /></label>
+        <button class="primary-button" type="submit">提交测试报销</button>
+      </form>
+    </section>
+    <h2>财务复核工作台</h2>
+    <div class="finance-grid">
+      <strong id="financePendingCount">0</strong>
+      <strong id="financeTotalAmount">¥0</strong>
+      <strong id="financeRiskRate">0%</strong>
+    </div>
+    <div class="finance-list" id="financeList"></div>
+    <button id="exportBtn" class="secondary-button" type="button">导出台账 CSV</button>
+    <div class="toast" id="toast"></div>
+    <script>
+      const state = { submittedClaims: [] };
+      const financeList = document.querySelector("#financeList");
+      function formatCurrency(value) { return new Intl.NumberFormat("zh-CN", { style: "currency", currency: "CNY", maximumFractionDigits: 0 }).format(value); }
+      function showToast(message) { document.querySelector("#toast").textContent = message; }
+      function addTimeline(claim, step, actor, status) { claim.timeline = claim.timeline || []; claim.timeline.push({ step, actor, status, at: "04/30 01:00" }); }
+      function renderTimeline(claim) { return `<div class="audit-trail">${(claim.timeline || []).map((item) => `<span><strong>${item.step}</strong> ${item.actor} · ${item.status} · ${item.at}</span>`).join("")}</div>`; }
+      document.querySelector("#e2eClaimForm").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const claim = { id: `e2e-${Date.now()}`, title: form.elements.title.value, total: Number(form.elements.amount.value), count: 1, status: "待财务复核", timeline: [], items: [{ date: "2026-04-12", invoice_date: "2026-04-12", category: "本地交通", vendor: form.elements.vendor.value, amount: Number(form.elements.amount.value), status: "AI 已识别" }] };
+        addTimeline(claim, "员工提交", "E2E 测试员", "已提交");
+        addTimeline(claim, "主管审批", "E2E 主管", "同意");
+        state.submittedClaims.unshift(claim);
+        renderFinanceView();
+      });
+    </script>
+    <script src="/finance-pack.js"></script>
+  </body>
+</html>
