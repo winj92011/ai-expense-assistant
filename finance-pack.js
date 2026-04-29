@@ -79,7 +79,7 @@
 
       .finance-pack-metrics {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr);
         gap: 10px;
         margin-top: 14px;
       }
@@ -168,27 +168,51 @@
     return `¥${Number(value || 0).toLocaleString("zh-CN")}`;
   }
 
-  function nowLabel() {
+  function formatTime(date) {
     return new Intl.DateTimeFormat("zh-CN", {
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
-    }).format(new Date());
+    }).format(date);
+  }
+
+  function stagedTime(minutesAgo) {
+    return formatTime(new Date(Date.now() - minutesAgo * 60 * 1000));
+  }
+
+  function ensureArchiveInfo(claim) {
+    const index = state.submittedClaims.findIndex((item) => item.id === claim.id);
+    const serial = String(Math.max(1, index + 1)).padStart(4, "0");
+    claim.archiveNo = claim.archiveNo || `EXP-202604-${serial}`;
+    claim.accountingStatus = claim.status === "已付款" ? "已入账" : claim.accountingStatus || "未入账";
+    return {
+      archiveNo: claim.archiveNo,
+      accountingStatus: claim.accountingStatus,
+    };
   }
 
   function ensureTimeline(claim) {
-    claim.timeline = claim.timeline || [];
-    const add = (step, actor, status) => {
-      if (!claim.timeline.some((item) => item.step === step)) {
-        claim.timeline.push({ step, actor, status, at: nowLabel() });
-      }
-    };
+    const desired = [
+      { step: "员工提交", actor: "吴经理", status: "已提交", minutesAgo: 76 },
+    ];
 
-    add("员工提交", "吴经理", "已提交");
-    if (["待财务复核", "待出纳付款", "已复核待付款", "已付款"].includes(claim.status)) add("主管审批", "主管", "同意");
-    if (["待出纳付款", "已复核待付款", "已付款"].includes(claim.status)) add("财务复核", "财务", "已复核");
-    if (claim.status === "已付款") add("出纳付款", "出纳", "已付款");
+    if (["待财务复核", "待出纳付款", "已复核待付款", "已付款"].includes(claim.status)) {
+      desired.push({ step: "主管审批", actor: "主管", status: "同意", minutesAgo: 49 });
+    }
+    if (["待出纳付款", "已复核待付款", "已付款"].includes(claim.status)) {
+      desired.push({ step: "财务复核", actor: "财务", status: "已复核", minutesAgo: 21 });
+    }
+    if (claim.status === "已付款") {
+      desired.push({ step: "出纳付款", actor: "出纳", status: "已付款", minutesAgo: 4 });
+    }
+
+    claim.timeline = desired.map((item) => ({
+      step: item.step,
+      actor: item.actor,
+      status: item.status,
+      at: stagedTime(item.minutesAgo),
+    }));
     return claim.timeline;
   }
 
@@ -260,9 +284,12 @@
 
   function exportVoucherPack(claim) {
     const coverage = routeCoverage(claim);
+    const archive = ensureArchiveInfo(claim);
     const rows = [
+      ["归档编号", archive.archiveNo],
       ["凭证包", claim.title],
       ["单据状态", claim.status],
+      ["会计入账", archive.accountingStatus],
       ["行程路线", coverage.route],
       ["票据数量", claim.count],
       ["合计金额", claim.total],
@@ -289,7 +316,7 @@
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${claim.title || "finance-pack"}-凭证包.csv`;
+    link.download = `${archive.archiveNo}-${claim.title || "凭证包"}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -299,6 +326,7 @@
     if (!claim) return;
     const modal = document.querySelector(`#${MODAL_ID}`);
     const coverage = routeCoverage(claim);
+    const archive = ensureArchiveInfo(claim);
     const paid = claim.status === "已付款";
 
     modal.innerHTML = `
@@ -307,8 +335,8 @@
           <div>
             <span class="label">${paid ? "已付款凭证包" : "财务复核凭证包"}</span>
             <h2>${claim.title}</h2>
-            <p>${coverage.route} · ${claim.count} 张票据 · ${money(claim.total)}</p>
-            ${paid ? '<span class="pack-status-line">报销闭环已完成，可归档</span>' : ""}
+            <p>${archive.archiveNo} · ${coverage.route} · ${claim.count} 张票据 · ${money(claim.total)}</p>
+            ${paid ? '<span class="pack-status-line">报销闭环已完成 · 已入账 · 可归档</span>' : ""}
           </div>
           <div class="finance-pack-actions">
             <button class="secondary-button" type="button" data-export-pack="${claim.id}">导出凭证包</button>
@@ -322,6 +350,7 @@
               <div><span>行程闭环</span><strong>${coverage.closed ? "已闭环" : "未闭环"}</strong></div>
               <div><span>路段覆盖</span><strong>${coverage.covered}/${coverage.expected}</strong></div>
               <div><span>风险项</span><strong>${riskCount(claim)}</strong></div>
+              <div><span>会计入账</span><strong>${archive.accountingStatus}</strong></div>
             </div>
             <div class="soft-note" style="margin-top: 14px;">本地凭证：${coverage.local.length ? coverage.local.join("、") : "暂无"}</div>
           </section>
@@ -357,6 +386,7 @@
 
   function renderClaimCard(claim, label, primaryAction) {
     ensureTimeline(claim);
+    const archive = ensureArchiveInfo(claim);
     const action = primaryAction
       ? `<button class="primary-button" type="button" ${primaryAction.attr}>${primaryAction.text}</button>`
       : "";
@@ -366,7 +396,7 @@
         <div>
           <span class="label">${label}</span>
           <h2>${claim.title}</h2>
-          <p>${claim.count} 张票据，合计 ${money(claim.total)}</p>
+          <p>${archive.archiveNo} · ${claim.count} 张票据，合计 ${money(claim.total)}</p>
           <div class="audit-trail">
             ${ensureTimeline(claim)
               .map((item) => `<span><strong>${item.step}</strong>${item.actor} · ${item.status} · ${item.at}</span>`)
