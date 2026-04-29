@@ -94,7 +94,8 @@
       .finance-pack-metrics span,
       .voucher-pack-table small,
       .process-line small,
-      .ledger-table small {
+      .ledger-table small,
+      .audit-note-list small {
         display: block;
         color: var(--muted);
         font-size: 12px;
@@ -104,6 +105,37 @@
         display: block;
         margin-top: 4px;
         font-size: 20px;
+      }
+
+      .audit-note-list {
+        display: grid;
+        gap: 10px;
+        margin: 14px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .audit-note-list li {
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .audit-note-list strong {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--ink);
+      }
+
+      .audit-note-list .ok {
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+      }
+
+      .audit-note-list .warn {
+        border-color: #fed7aa;
+        background: #fff7ed;
       }
 
       .archive-strip {
@@ -341,6 +373,7 @@
     const expectedSegments = Math.max(parts.length - 1, 0);
     return {
       route,
+      parts,
       closed,
       covered: intercity.length,
       expected: expectedSegments || intercity.length,
@@ -350,6 +383,42 @@
 
   function riskCount(claim) {
     return claim.items.filter((item) => String(item.status || "").includes("需")).length;
+  }
+
+  function auditNotes(claim) {
+    const coverage = routeCoverage(claim);
+    const risks = riskCount(claim);
+    const start = coverage.parts[0] || "出发地";
+    const localText = coverage.local.length ? coverage.local.join("、") : "暂无本地凭证";
+    return [
+      {
+        title: "闭环依据",
+        level: coverage.closed ? "ok" : "warn",
+        text: coverage.closed
+          ? `行程从${start}出发并回到${start}，城际交通覆盖 ${coverage.covered}/${coverage.expected} 段，可认定为闭环差旅。`
+          : `当前行程尚未回到主要出发地，城际交通覆盖 ${coverage.covered}/${coverage.expected} 段，建议补充返程或说明。`,
+      },
+      {
+        title: "凭证覆盖",
+        level: coverage.local.length ? "ok" : "warn",
+        text: `本地凭证覆盖：${localText}。这些凭证用于解释差旅期间的住宿、短途交通和接待/餐饮支出。`,
+      },
+      {
+        title: "归档结论",
+        level: risks ? "warn" : "ok",
+        text: risks
+          ? `仍有 ${risks} 项需要人工确认，建议完成说明后再归档。`
+          : "未发现异常项；主管审批、财务复核、出纳付款链路完整，可作为已付款凭证包归档。",
+      },
+    ];
+  }
+
+  function renderAuditNotes(claim) {
+    return `
+      <ul class="audit-note-list">
+        ${auditNotes(claim).map((note) => `<li class="${note.level}"><strong>${note.title}</strong><small>${note.text}</small></li>`).join("")}
+      </ul>
+    `;
   }
 
   function renderTimelineRows(claim) {
@@ -411,6 +480,9 @@
       ["路段覆盖", `${coverage.covered}/${coverage.expected}`],
       ["本地凭证", coverage.local.join("、") || "暂无"],
       [],
+      ["审计说明", "结论"],
+      ...auditNotes(claim).map((note) => [note.title, note.text]),
+      [],
       ["处理节点", "处理人", "状态", "时间"],
       ...ensureTimeline(claim).map((item) => [item.step, item.actor, item.status, item.at]),
       [],
@@ -430,12 +502,13 @@
 
   function exportArchiveLedger(claims) {
     const rows = [
-      ["归档编号", "标题", "路线", "票据数", "金额", "会计入账", "单据状态", "本地凭证", "最后处理时间"],
+      ["归档编号", "标题", "路线", "票据数", "金额", "会计入账", "单据状态", "本地凭证", "归档结论", "最后处理时间"],
       ...claims.map((claim) => {
         const archive = ensureArchiveInfo(claim);
         const coverage = routeCoverage(claim);
         const timeline = ensureTimeline(claim);
         const lastStep = timeline[timeline.length - 1] || {};
+        const conclusion = auditNotes(claim).find((note) => note.title === "归档结论")?.text || "";
         return [
           archive.archiveNo,
           claim.title,
@@ -445,6 +518,7 @@
           archive.accountingStatus,
           claim.status,
           coverage.local.join("、") || "暂无",
+          conclusion,
           lastStep.at || "",
         ];
       }),
@@ -484,6 +558,10 @@
               <div><span>会计入账</span><strong>${archive.accountingStatus}</strong></div>
             </div>
             <div class="soft-note" style="margin-top: 14px;">本地凭证：${coverage.local.length ? coverage.local.join("、") : "暂无"}</div>
+          </section>
+          <section class="finance-pack-section">
+            <h3>审计说明</h3>
+            ${renderAuditNotes(claim)}
           </section>
           <section class="finance-pack-section">
             <h3>处理记录</h3>
