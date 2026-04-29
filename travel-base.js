@@ -31,6 +31,46 @@
       color: var(--ink);
       padding: 0 10px;
     }
+    .route-breakdown {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+      margin-bottom: 12px;
+    }
+    .route-segment {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid #d7e6ff;
+      border-radius: 8px;
+      background: #f8fbff;
+    }
+    .route-segment-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--ink);
+      font-weight: 800;
+    }
+    .route-segment-head span {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .route-segment-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .route-segment-items span {
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
     @media (max-width: 560px) { .test-trip-panel { grid-template-columns: 1fr; } }
   `;
   document.head.appendChild(style);
@@ -86,6 +126,97 @@
     subtree: true,
   });
   setInsight(insight.textContent);
+})();
+
+(() => {
+  let latestTrip = null;
+  let latestItems = [];
+
+  const originalApplyAnalysisResult = window.applyAnalysisResult;
+  const originalRenderDraft = window.renderDraft;
+
+  if (typeof originalApplyAnalysisResult !== "function" || typeof originalRenderDraft !== "function") return;
+
+  function money(value) {
+    return new Intl.NumberFormat("zh-CN", {
+      style: "currency",
+      currency: "CNY",
+      maximumFractionDigits: 0,
+    }).format(value);
+  }
+
+  function getSegments(trip) {
+    const path = Array.isArray(trip?.route_path) ? trip.route_path.filter(Boolean) : [];
+    if (path.length < 2) return [];
+
+    return path.slice(0, -1).map((from, index) => ({
+      from,
+      to: path[index + 1],
+      label: `${from} → ${path[index + 1]}`,
+      items: [],
+    }));
+  }
+
+  function attachItems(segments, items) {
+    items.forEach((item) => {
+      const route = item.route || "";
+      const match = segments.find((segment) => route.includes(segment.from) && route.includes(segment.to));
+
+      if (match) {
+        match.items.push(item);
+        return;
+      }
+
+      if (item.category === "住宿" || item.category === "本地交通" || item.category === "餐饮") {
+        const cityMatch = segments.find((segment) => item.vendor?.includes(segment.to));
+        (cityMatch || segments[0])?.items.push(item);
+      }
+    });
+
+    return segments;
+  }
+
+  function renderRouteBreakdown() {
+    document.querySelector(".route-breakdown")?.remove();
+
+    const tableWrap = document.querySelector(".table-wrap");
+    const segments = attachItems(getSegments(latestTrip), latestItems);
+    if (!tableWrap || !segments.length) return;
+
+    const view = document.createElement("div");
+    view.className = "route-breakdown";
+    view.innerHTML = segments
+      .map((segment) => {
+        const total = segment.items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+        const itemText = segment.items.length
+          ? segment.items.map((item) => `<span>${item.category} · ${item.vendor}</span>`).join("")
+          : "<span>待补充票据</span>";
+        return `
+          <article class="route-segment">
+            <div class="route-segment-head">
+              <strong>${segment.label}</strong>
+              <span>${segment.items.length} 项 · ${money(total)}</span>
+            </div>
+            <div class="route-segment-items">${itemText}</div>
+          </article>
+        `;
+      })
+      .join("");
+
+    tableWrap.insertAdjacentElement("beforebegin", view);
+  }
+
+  window.applyAnalysisResult = function patchedRouteApplyAnalysisResult(result) {
+    latestTrip = result?.trip || null;
+    latestItems = Array.isArray(result?.items) ? result.items : [];
+    return originalApplyAnalysisResult(result);
+  };
+
+  window.renderDraft = function patchedRouteRenderDraft() {
+    const output = originalRenderDraft();
+    renderRouteBreakdown();
+    return output;
+  };
 })();
 
 (() => {
