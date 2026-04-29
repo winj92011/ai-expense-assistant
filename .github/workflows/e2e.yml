@@ -2,9 +2,12 @@ name: Playwright E2E
 
 on:
   push:
-    branches: [main, codex/finance-pack-e2e]
+    branches: [main]
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   e2e:
@@ -13,23 +16,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Detect E2E suite
+        id: detect
+        shell: bash
+        run: |
+          if [[ -f package.json && -f playwright.config.js && -d tests/e2e ]]; then
+            echo "has_e2e=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_e2e=false" >> "$GITHUB_OUTPUT"
+            echo "No Playwright E2E suite found on this ref; skipping."
+          fi
+
       - name: Setup Node
+        if: steps.detect.outputs.has_e2e == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
-        run: npm install
+        if: steps.detect.outputs.has_e2e == 'true'
+        run: npm ci
 
       - name: Install Playwright browsers
+        if: steps.detect.outputs.has_e2e == 'true'
         run: npx playwright install --with-deps
 
       - name: Run Playwright E2E
+        if: steps.detect.outputs.has_e2e == 'true'
         run: npm run test:e2e
 
       - name: Upload Playwright report
-        if: always()
+        if: always() && steps.detect.outputs.has_e2e == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
