@@ -263,17 +263,30 @@ approvalsView.addEventListener("click", (event) => {
 });
 
 financeList.addEventListener("click", (event) => {
+  const payButton = event.target.closest("[data-pay-claim]");
+  if (payButton) {
+    const claim = state.submittedClaims.find((item) => item.id === payButton.dataset.payClaim);
+    if (!claim) return;
+
+    claim.status = "已付款";
+    renderDraftsView();
+    renderApprovalsView();
+    renderFinanceView();
+    showToast("已确认付款，报销闭环完成");
+    return;
+  }
+
   const reviewButton = event.target.closest("[data-review-claim]");
   if (!reviewButton) return;
 
   const claim = state.submittedClaims.find((item) => item.id === reviewButton.dataset.reviewClaim);
   if (!claim) return;
 
-  claim.status = "已复核待付款";
+  claim.status = "待出纳付款";
   renderDraftsView();
   renderApprovalsView();
   renderFinanceView();
-  showToast("财务已复核，进入待付款");
+  showToast("财务已复核，进入出纳付款");
 });
 
 document.querySelector("#exportBtn").addEventListener("click", () => {
@@ -670,7 +683,10 @@ function renderApprovalsView() {
 
 function renderFinanceView() {
   const claims = state.submittedClaims.filter((claim) => claim.status === "待财务复核");
-  const reviewedClaims = state.submittedClaims.filter((claim) => claim.status === "已复核待付款");
+  const paymentClaims = state.submittedClaims.filter(
+    (claim) => claim.status === "待出纳付款" || claim.status === "已复核待付款",
+  );
+  const paidClaims = state.submittedClaims.filter((claim) => claim.status === "已付款");
   const total = claims.reduce((sum, claim) => sum + claim.total, 0);
   const totalItems = claims.reduce((sum, claim) => sum + claim.items.length, 0);
   const riskyItems = claims.reduce(
@@ -682,7 +698,7 @@ function renderFinanceView() {
   document.querySelector("#financeTotalAmount").textContent = formatCurrency(total);
   document.querySelector("#financeRiskRate").textContent = totalItems ? `${Math.round((riskyItems / totalItems) * 100)}%` : "0%";
 
-  if (!claims.length && !reviewedClaims.length) {
+  if (!claims.length && !paymentClaims.length && !paidClaims.length) {
     financeList.innerHTML = `
       <div class="empty-state compact">
         <h2>暂无待复核报销</h2>
@@ -710,12 +726,30 @@ function renderFinanceView() {
     )
     .join("");
 
-  const reviewedHtml = reviewedClaims
+  const paymentHtml = paymentClaims
     .map(
       (claim) => `
         <article class="queue-card">
           <div>
-            <span class="label">已复核待付款</span>
+            <span class="label">待出纳付款</span>
+            <h2>${claim.title}</h2>
+            <p>${claim.count} 张票据，合计 ${formatCurrency(claim.total)}</p>
+          </div>
+          <div class="action-group">
+            <button class="secondary-button" type="button">查看明细</button>
+            <button class="primary-button" type="button" data-pay-claim="${claim.id}">确认付款</button>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+
+  const paidHtml = paidClaims
+    .map(
+      (claim) => `
+        <article class="queue-card">
+          <div>
+            <span class="label">已付款</span>
             <h2>${claim.title}</h2>
             <p>${claim.count} 张票据，合计 ${formatCurrency(claim.total)}</p>
           </div>
@@ -727,5 +761,5 @@ function renderFinanceView() {
     )
     .join("");
 
-  financeList.innerHTML = `${pendingHtml}${reviewedHtml}`;
+  financeList.innerHTML = `${pendingHtml}${paymentHtml}${paidHtml}`;
 }
