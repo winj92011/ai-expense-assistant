@@ -105,6 +105,37 @@
         font-size: 20px;
       }
 
+      .archive-strip {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+
+      .archive-strip span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 9px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #f8fbff;
+        color: var(--ink);
+        font-size: 12px;
+      }
+
+      .archive-strip strong {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .archive-strip .ready {
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+        color: #047857;
+        font-weight: 700;
+      }
+
       .process-line {
         display: grid;
         grid-template-columns: 92px 1fr;
@@ -387,16 +418,22 @@
   function renderClaimCard(claim, label, primaryAction) {
     ensureTimeline(claim);
     const archive = ensureArchiveInfo(claim);
+    const isPaid = claim.status === "已付款";
     const action = primaryAction
       ? `<button class="primary-button" type="button" ${primaryAction.attr}>${primaryAction.text}</button>`
       : "";
-    const detailText = claim.status === "已付款" ? "查看凭证包" : "查看明细";
+    const detailText = isPaid ? "查看凭证包" : "查看明细";
     return `
       <article class="queue-card">
         <div>
           <span class="label">${label}</span>
           <h2>${claim.title}</h2>
-          <p>${archive.archiveNo} · ${claim.count} 张票据，合计 ${money(claim.total)}</p>
+          <p>${claim.count} 张票据，合计 ${money(claim.total)}</p>
+          <div class="archive-strip">
+            <span><strong>归档号</strong>${archive.archiveNo}</span>
+            <span><strong>入账</strong>${archive.accountingStatus}</span>
+            <span class="${isPaid ? "ready" : ""}"><strong>凭证包</strong>${isPaid ? "可归档" : "处理中"}</span>
+          </div>
           <div class="audit-trail">
             ${ensureTimeline(claim)
               .map((item) => `<span><strong>${item.step}</strong>${item.actor} · ${item.status} · ${item.at}</span>`)
