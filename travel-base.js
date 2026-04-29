@@ -93,11 +93,14 @@
       font-size: 12px;
       font-weight: 700;
     }
-    #draftSection.route-view .draft-content {
-      grid-template-columns: 1fr;
+    #draftSection.route-view .draft-layout {
+      grid-template-columns: minmax(0, 1fr);
     }
+    #draftSection.route-view .route-breakdown,
+    #draftSection.route-view .table-wrap,
     #draftSection.route-view .approval-card {
-      max-width: 100%;
+      grid-column: 1 / -1;
+      width: 100%;
     }
     @media (max-width: 560px) { .test-trip-panel { grid-template-columns: 1fr; } }
   `;
