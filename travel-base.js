@@ -66,3 +66,27 @@
   });
   setInsight(insight.textContent);
 })();
+
+(() => {
+  const originalApplyAnalysisResult = window.applyAnalysisResult;
+  const originalGetCompletenessText = window.getCompletenessText;
+  let suggestions = [];
+
+  if (typeof originalApplyAnalysisResult !== "function" || typeof originalGetCompletenessText !== "function") return;
+
+  window.applyAnalysisResult = function patchedApplyAnalysisResult(result) {
+    suggestions = Array.isArray(result?.completeness_suggestions)
+      ? result.completeness_suggestions.filter(Boolean)
+      : [];
+
+    return originalApplyAnalysisResult(result);
+  };
+
+  window.getCompletenessText = function patchedGetCompletenessText() {
+    if (suggestions.length) {
+      return suggestions.join("；");
+    }
+
+    return originalGetCompletenessText();
+  };
+})();
