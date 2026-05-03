@@ -7,6 +7,30 @@
 
   if (!loginStrip || !window.localStorage) return;
 
+  const persistenceAdapter = window.createPersistenceAdapter
+    ? window.createPersistenceAdapter({ key: STORAGE_KEY, mode: "local" })
+    : {
+        save(data) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          return data;
+        },
+        read() {
+          try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            return raw ? JSON.parse(raw) : null;
+          } catch {
+            return null;
+          }
+        },
+        clear() {
+          localStorage.removeItem(STORAGE_KEY);
+          return true;
+        },
+        describe() {
+          return { mode: "local", databaseConnected: false, apiReady: false };
+        },
+      };
+
   function isTestMode() {
     const params = new URLSearchParams(window.location.search);
     return params.get("smoke") === "1" || params.get("e2e") === "1" || window.location.hash === "#smoke";
@@ -27,18 +51,13 @@
 
   function saveSnapshot() {
     const data = snapshot();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    renderPanel(data);
-    return data;
+    const saved = persistenceAdapter.save(data);
+    renderPanel(saved);
+    return saved;
   }
 
   function readSnapshot() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
+    return persistenceAdapter.read();
   }
 
   function restoreSnapshot(data = readSnapshot()) {
@@ -71,7 +90,7 @@
   }
 
   function clearSnapshot() {
-    localStorage.removeItem(STORAGE_KEY);
+    persistenceAdapter.clear();
     renderPanel(null);
     showToast("已清空本地暂存");
   }
@@ -136,10 +155,11 @@
 
     const draftCount = data?.draftItems?.length || 0;
     const claimCount = data?.submittedClaims?.length || 0;
+    const adapterInfo = persistenceAdapter.describe();
     panel.innerHTML = `
       <div>
         <strong>浏览器本地暂存</strong>
-        <span>仅用于原型演示；正式版本会接入数据库。上次保存：${formatSavedAt(data)} · 草稿 ${draftCount} 条 · 单据 ${claimCount} 条</span>
+        <span>仅用于原型演示；正式版本会接入数据库。上次保存：${formatSavedAt(data)} · 草稿 ${draftCount} 条 · 单据 ${claimCount} 条 · ${adapterInfo.mode}</span>
       </div>
       <div class="action-group">
         <button class="secondary-button" type="button" data-save-prototype>保存快照</button>
@@ -190,4 +210,12 @@
       window.setTimeout(() => restoreSnapshot(data), 0);
     }
   }
+
+  window.prototypePersistence = {
+    saveSnapshot,
+    readSnapshot,
+    restoreSnapshot,
+    clearSnapshot,
+    adapter: persistenceAdapter,
+  };
 })();
