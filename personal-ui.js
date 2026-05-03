@@ -154,10 +154,23 @@
 
     .personal-ui .primary-button {
       background: #11896d;
+      border-color: #11896d;
     }
 
     .personal-ui .primary-button:hover {
       background: #0c7059;
+      border-color: #0c7059;
+    }
+
+    .personal-ui .secondary-button {
+      border-color: #cbd8e3;
+      background: #fbfdfd;
+      color: #263645;
+    }
+
+    .personal-ui .secondary-button:hover {
+      border-color: #9eb3c5;
+      background: #f4faf8;
     }
 
     .personal-ui .login-strip,
@@ -256,6 +269,17 @@
       color: #11896d;
     }
 
+    .personal-ui .label {
+      color: #637083;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .personal-ui .status-pill {
+      border: 1px solid rgba(51, 194, 155, 0.18);
+      white-space: nowrap;
+    }
+
     .personal-ui .trip-card,
     .personal-ui .completeness-box,
     .personal-ui .adapter-cell,
@@ -273,6 +297,14 @@
 
     .personal-ui .metric-row div {
       border-top: 3px solid #33c29b;
+    }
+
+    .personal-ui .metric-row div,
+    .personal-ui .risk-box,
+    .personal-ui .completeness-box,
+    .personal-ui .file-item,
+    .personal-ui .table-wrap {
+      box-shadow: 0 8px 22px rgba(39, 53, 68, 0.04);
     }
 
     .personal-ui .risk-box {
@@ -307,6 +339,132 @@
       border-top: 3px solid #256fdb;
     }
 
+    .personal-ui .empty-state {
+      position: relative;
+      min-height: 168px;
+      border-style: dashed;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(247, 251, 250, 0.96)),
+        repeating-linear-gradient(90deg, transparent 0 22px, rgba(17, 137, 109, 0.06) 22px 23px);
+    }
+
+    .personal-ui .empty-state::before {
+      content: "";
+      position: absolute;
+      right: 20px;
+      top: 20px;
+      width: 44px;
+      height: 44px;
+      border: 1px solid #d9e8e4;
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, #ffffff 0 34%, #f4fbf8 34% 100%),
+        linear-gradient(90deg, #33c29b 0 5px, transparent 5px 100%);
+      opacity: 0.85;
+    }
+
+    .personal-ui .queue-card,
+    .personal-ui .finance-card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .personal-ui .queue-card::before,
+    .personal-ui .finance-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: #33c29b;
+    }
+
+    .personal-ui .queue-card:hover,
+    .personal-ui .finance-card:hover,
+    .personal-ui .stat-card:hover {
+      transform: translateY(-1px);
+    }
+
+    .personal-ui .queue-card,
+    .personal-ui .finance-card,
+    .personal-ui .stat-card {
+      transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .personal-ui .finance-card {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 250, 0.98)),
+        repeating-linear-gradient(90deg, transparent 0 28px, rgba(37, 111, 219, 0.045) 28px 29px);
+    }
+
+    .personal-ui .finance-card-head h2,
+    .personal-ui .queue-card h2 {
+      line-height: 1.35;
+    }
+
+    .personal-ui .archive-line span,
+    .personal-ui .finance-badges span,
+    .personal-ui .voucher-files span,
+    .personal-ui .review-checklist span,
+    .personal-ui .audit-trail span,
+    .personal-ui .data-model-counts span,
+    .personal-ui .role-scope-list strong {
+      border: 1px solid rgba(17, 137, 109, 0.12);
+      background: #f4fbf8;
+      color: #426052;
+    }
+
+    .personal-ui .finance-badges .risk {
+      border-color: rgba(184, 107, 32, 0.18);
+      background: #fff8ef;
+      color: #b86b20;
+    }
+
+    .personal-ui table {
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    .personal-ui th {
+      background: #f7fbfa;
+      color: #526173;
+      font-weight: 800;
+    }
+
+    .personal-ui td {
+      background: #ffffff;
+    }
+
+    .personal-ui tbody tr:hover td {
+      background: #f7fbfa;
+    }
+
+    .personal-ui .cell-input,
+    .personal-ui .cell-select,
+    .personal-ui .finance-filter-bar input,
+    .personal-ui .finance-filter-bar select,
+    .personal-ui .finance-review-note textarea,
+    .personal-ui .integration-strip select,
+    .personal-ui .role-strip select,
+    .personal-ui .base-picker select {
+      border-color: #d3dee8;
+      background: #fbfdfd;
+    }
+
+    .personal-ui .cell-input:focus,
+    .personal-ui .cell-select:focus,
+    .personal-ui .finance-filter-bar input:focus,
+    .personal-ui .finance-filter-bar select:focus,
+    .personal-ui .finance-review-note textarea:focus,
+    .personal-ui .integration-strip select:focus,
+    .personal-ui .role-strip select:focus,
+    .personal-ui .base-picker select:focus {
+      border-color: #33c29b;
+      outline: 3px solid rgba(51, 194, 155, 0.14);
+      background: #ffffff;
+    }
+
     .personal-ui .toast {
       background: #17202a;
     }
@@ -321,6 +479,10 @@
       box-shadow: 0 12px 30px rgba(39, 53, 68, 0.06);
     }
 
+    .prototype-console[open] {
+      background: rgba(255, 255, 255, 0.97);
+    }
+
     .prototype-console > summary {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -330,6 +492,12 @@
       padding: 12px 14px;
       cursor: pointer;
       list-style: none;
+      border-radius: 8px;
+      transition: background 0.16s ease;
+    }
+
+    .prototype-console > summary:hover {
+      background: #f7fbfa;
     }
 
     .prototype-console > summary::-webkit-details-marker {
@@ -382,6 +550,26 @@
       box-shadow: none;
     }
 
+    .prototype-console .platform-adapter-grid,
+    .prototype-console .identity-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .prototype-console .adapter-cell,
+    .prototype-console .identity-cell {
+      min-height: 76px;
+    }
+
+    .prototype-console .adapter-payload,
+    .prototype-console .platform-callback-card {
+      gap: 8px;
+    }
+
+    .prototype-console pre {
+      font-size: 11px;
+      line-height: 1.48;
+    }
+
     @media (max-width: 920px) {
       .personal-ui .app-shell {
         grid-template-columns: 1fr;
@@ -389,10 +577,16 @@
 
       .personal-ui .sidebar {
         height: auto;
+        position: static;
       }
 
       .personal-ui .topbar::after {
         display: none;
+      }
+
+      .personal-ui .topbar {
+        min-height: 0;
+        padding: 22px;
       }
 
       .personal-ui h1 {
@@ -401,6 +595,64 @@
 
       .personal-ui .hero-grid {
         grid-template-columns: 1fr;
+      }
+
+      .prototype-console .platform-adapter-grid,
+      .prototype-console .identity-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .personal-ui .topbar {
+        align-items: stretch;
+      }
+
+      .personal-ui .topbar .secondary-button {
+        width: 100%;
+      }
+
+      .personal-ui .login-strip,
+      .personal-ui .integration-strip,
+      .personal-ui .role-strip,
+      .personal-ui .quick-start,
+      .prototype-console > summary {
+        grid-template-columns: 1fr;
+      }
+
+      .personal-ui .integration-strip {
+        align-items: stretch;
+      }
+
+      .prototype-console > summary::after {
+        width: fit-content;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .personal-ui .workspace {
+        padding: 14px 12px 22px;
+      }
+
+      .personal-ui h1 {
+        font-size: 24px;
+      }
+
+      .personal-ui .nav-item {
+        min-height: 40px;
+        font-size: 12px;
+      }
+
+      .personal-ui .upload-panel,
+      .personal-ui .assistant-panel,
+      .personal-ui .draft-section,
+      .personal-ui .finance-card,
+      .personal-ui .queue-card {
+        padding: 14px;
+      }
+
+      .personal-ui .dropzone {
+        min-height: 190px;
       }
     }
   `;
