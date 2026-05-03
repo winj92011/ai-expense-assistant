@@ -46,7 +46,7 @@ test("data model preview reflects draft, submitted claim, approval, and finance 
   await expect(preview).toContainText("归档 1");
   await expect(preview.locator("pre")).toContainText('"finance_archives"');
   await expect(preview.locator("pre")).toContainText('"archive_no": "FIN-');
-  await expect(preview.locator("pre")).toContainText('"ledger_status": "待入账"');
+  await expect(preview.locator("pre")).toContainText('"ledger_status": "ready_to_post"');
 
   const downloadPromise = page.waitForEvent("download");
   await preview.getByRole("button", { name: "导出 JSON" }).click();
