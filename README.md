@@ -16,8 +16,46 @@
 - `/api/receipts/analyze` AI 识别接口
 - 异常提示
 - 行程完整性建议，不强制补齐
+- 浏览器本地暂存快照，用于原型演示时恢复草稿和单据
 - 审批链路预览
 - 财务台账 CSV 导出
+- 数据对象预览与 JSON 导出，用于对齐后续数据库和附件存储
+- 数据模型草案：`docs/DATA_MODEL.md`
+- Prototype mock API 已按接口契约预留，暂不写真实数据库；`npm run test:contracts` 会检查文档和 mock API 响应形状
+- 环境变量说明：`docs/ENVIRONMENT.md`
+- 演示指南：`docs/DEMO_GUIDE.md`
+- 原型自动验证：访问 `index.html?smoke=1` 或线上地址追加 `?smoke=1`，自动跑员工提交、主管审批、财务复核、凭证包、付款闭环和数据对象校验
+- Playwright E2E：安装依赖后运行 `npm run test:e2e`，覆盖平台适配、角色权限、多语言、异常说明、本地暂存、财务凭证包、数据对象、系统诊断和 smoke 入口
+
+## 自动验证
+
+页面内冒烟验证：
+
+```bash
+https://ai-expense-assistant.vercel.app/?smoke=1
+```
+
+Playwright E2E：
+
+```bash
+npm install
+npx playwright install
+npm test
+```
+
+完整演示路径和人工 smoke test 清单见：`docs/DEMO_GUIDE.md`
+
+发布前检查清单见：`docs/RELEASE_CHECKLIST.md`
+
+后续数据库与对象关系草案见：`docs/DATA_MODEL.md`
+
+后续接口契约草案见：`docs/API_CONTRACTS.md`
+
+环境变量配置说明见：`docs/ENVIRONMENT.md`
+
+## 原型暂存
+
+页面会显示“浏览器本地暂存”工具条，可手动保存、恢复或清空当前草稿和已提交单据。该能力只用于原型演示，正式版本仍建议接入数据库、附件存储和企业身份权限。
 
 ## 后续接入顺序
 

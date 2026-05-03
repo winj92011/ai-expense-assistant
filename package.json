@@ -1,0 +1,14 @@
+{
+  "name": "ai-expense-assistant",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "test": "npm run test:contracts && npm run test:e2e",
+    "test:contracts": "node scripts/validate-contracts.js && node scripts/validate-mock-api.js",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "http-server": "^14.1.1"
+  }
+}

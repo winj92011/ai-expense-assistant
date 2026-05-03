@@ -14,8 +14,6 @@
 
   if (!platformSelect || !languageSelect) return;
 
-  injectEnterpriseStyles();
-
   function currentPlatform() {
     return platformSelect.value || "feishu";
   }
@@ -52,37 +50,6 @@
     }
 
     setReservedLoginState();
-  }
-
-  function injectEnterpriseStyles() {
-    const style = document.createElement("style");
-    style.textContent = `
-      button, input, select { font: inherit; }
-      .integration-strip {
-        display: grid;
-        grid-template-columns: minmax(180px, 220px) minmax(160px, 200px) minmax(0, 1fr);
-        gap: 10px;
-        align-items: end;
-        margin-top: 10px;
-        padding: 11px 14px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: #f8fbff;
-      }
-      .integration-strip label { display: grid; gap: 5px; }
-      .integration-strip span { color: var(--muted); font-size: 12px; font-weight: 700; }
-      .integration-strip select {
-        min-height: 36px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: #ffffff;
-        color: var(--ink);
-        padding: 0 10px;
-      }
-      .integration-strip p { margin: 0 0 7px; color: var(--muted); font-size: 13px; }
-      @media (max-width: 920px) { .integration-strip { display: grid; grid-template-columns: 1fr; } }
-    `;
-    document.head.appendChild(style);
   }
 
   platformSelect.addEventListener("change", () => {

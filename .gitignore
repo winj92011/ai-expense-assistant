@@ -4,3 +4,6 @@ node_modules/
 dist/
 .next/
 .vercel/
+playwright-report/
+test-results/
+.codex-push-worktree/

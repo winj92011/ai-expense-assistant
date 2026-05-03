@@ -27,7 +27,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -203,6 +204,44 @@ p {
 .login-strip.warning {
   border-color: #f0d3b0;
   background: #fff8ef;
+}
+
+.integration-strip {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(160px, 200px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: end;
+  margin-top: 10px;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.integration-strip label {
+  display: grid;
+  gap: 5px;
+}
+
+.integration-strip span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.integration-strip select {
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 0 10px;
+}
+
+.integration-strip p {
+  margin: 0 0 7px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .eyebrow {
@@ -681,6 +720,28 @@ th {
   margin-bottom: 18px;
 }
 
+.audit-trail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.audit-trail span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: #eef5ff;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.audit-trail strong {
+  color: var(--text);
+}
+
 .debug-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -765,6 +826,7 @@ th {
   .section-title,
   .queue-card,
   .login-strip,
+  .integration-strip,
   .quick-start {
     display: grid;
   }

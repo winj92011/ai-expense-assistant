@@ -43,6 +43,83 @@ function showToast(message) {
   window.setTimeout(() => toast.classList.remove("show"), 2600);
 }
 
+async function fetchJsonOrFallback(url, fallback) {
+  try {
+    const response = await fetch(url);
+    const text = await response.text();
+    if (!response.ok || !text.trim()) return fallback;
+    return JSON.parse(text);
+  } catch {
+    return fallback;
+  }
+}
+
+function localReadinessFallback() {
+  return {
+    prototype: {
+      mode: "static-prototype",
+      persistence: "browser-local",
+      mockApi: true,
+      databaseConnected: false,
+      objectStorageConfigured: false,
+    },
+    ai: {
+      provider: "mock",
+      kimiConfigured: false,
+      volcengineConfigured: false,
+      fallback: "mock",
+    },
+    enterprise: {
+      feishuConfigured: false,
+      dingtalkConfigured: false,
+      browserTestMode: true,
+    },
+    validation: {
+      contractCommand: "npm run test:contracts",
+      e2eCommand: "npm run test:e2e",
+      smokeUrl: "/?smoke=1",
+    },
+  };
+}
+
+function formatNow() {
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date());
+}
+
+function addTimeline(claim, step, actor, status) {
+  claim.timeline = claim.timeline || [];
+  claim.timeline.push({ step, actor, status, at: formatNow() });
+}
+
+function renderTimeline(claim) {
+  const timeline = claim.timeline || [];
+  if (!timeline.length) return "";
+
+  return `
+    <div class="audit-trail">
+      ${timeline
+        .map(
+          (item) => `
+            <span>
+              <strong>${item.step}</strong>
+              ${item.actor} · ${item.status} · ${item.at}
+            </span>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function getTimelineText(claim) {
+  return (claim.timeline || []).map((item) => `${item.step}/${item.actor}/${item.status}/${item.at}`).join(" | ");
+}
+
 function renderFiles() {
   fileList.innerHTML = "";
 
@@ -214,7 +291,9 @@ document.querySelector("#submitDraftBtn").addEventListener("click", () => {
     count: state.draftItems.length,
     items: state.draftItems.map((item) => ({ ...item })),
     status: "待主管审批",
+    timeline: [],
   };
+  addTimeline(claim, "员工提交", "吴经理", "已提交");
   state.submittedClaims.unshift(claim);
   state.claimStatus = "submitted";
   renderDraftsView();
@@ -256,6 +335,7 @@ approvalsView.addEventListener("click", (event) => {
   if (!claim) return;
 
   claim.status = "待财务复核";
+  addTimeline(claim, "主管审批", "主管", "同意");
   renderDraftsView();
   renderApprovalsView();
   renderFinanceView();
@@ -269,6 +349,7 @@ financeList.addEventListener("click", (event) => {
     if (!claim) return;
 
     claim.status = "已付款";
+    addTimeline(claim, "出纳付款", "出纳", "已付款");
     renderDraftsView();
     renderApprovalsView();
     renderFinanceView();
@@ -283,6 +364,7 @@ financeList.addEventListener("click", (event) => {
   if (!claim) return;
 
   claim.status = "待出纳付款";
+  addTimeline(claim, "财务复核", "财务", "已复核");
   renderDraftsView();
   renderApprovalsView();
   renderFinanceView();
@@ -295,6 +377,7 @@ document.querySelector("#exportBtn").addEventListener("click", () => {
       claim.id,
       claim.title,
       claim.status,
+      getTimelineText(claim),
       item.date,
       item.invoice_date || "",
       item.category,
@@ -307,6 +390,7 @@ document.querySelector("#exportBtn").addEventListener("click", () => {
     "draft",
     document.querySelector("#tripTitle").textContent,
     "草稿",
+    "",
     item.date,
     item.invoice_date || "",
     item.category,
@@ -314,7 +398,7 @@ document.querySelector("#exportBtn").addEventListener("click", () => {
     item.amount,
     item.status,
   ]);
-  const rows = [["报销单", "标题", "单据状态", "费用/行程日期", "开票日期", "费用类型", "商户", "金额", "明细状态"], ...claimRows, ...draftRows];
+  const rows = [["报销单", "标题", "单据状态", "处理记录", "费用/行程日期", "开票日期", "费用类型", "商户", "金额", "明细状态"], ...claimRows, ...draftRows];
   const csv = rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\n");
   const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -326,15 +410,28 @@ document.querySelector("#exportBtn").addEventListener("click", () => {
 });
 
 runAiDebugBtn.addEventListener("click", async () => {
-  aiDebugOutput.textContent = "正在测试 Kimi 文本接口...";
+  aiDebugOutput.textContent = "正在检查 AI、环境和原型验证状态...";
   try {
-    const [statusRes, testRes] = await Promise.all([fetch("/api/ai-status"), fetch("/api/ai-test")]);
-    const status = await statusRes.json();
-    const test = await testRes.json();
+    const [status, test, readiness] = await Promise.all([
+      fetchJsonOrFallback("/api/ai-status", {
+        provider: "mock",
+        kimiConfigured: false,
+        kimiModel: "kimi-k2.5",
+        staticFallback: true,
+      }),
+      fetchJsonOrFallback("/api/ai-test", {
+        provider: "mock",
+        kimiConfigured: false,
+        kimiTextOk: false,
+        kimiTextError: "API route unavailable in static preview",
+      }),
+      fetchJsonOrFallback("/api/system-readiness", localReadinessFallback()),
+    ]);
     aiDebugOutput.textContent = JSON.stringify(
       {
         status,
         textTest: test,
+        readiness,
         lastReceiptAnalysis: lastAiResult
           ? {
               source: lastAiResult.source,
@@ -636,6 +733,7 @@ function renderDraftsView() {
             <span class="label">${claim.status}</span>
             <h2>${claim.title}</h2>
             <p>${claim.count} 张票据，合计 ${formatCurrency(claim.total)}</p>
+            ${renderTimeline(claim)}
           </div>
         </article>
       `,
@@ -668,6 +766,7 @@ function renderApprovalsView() {
                 <span class="label">飞书卡片预览</span>
                 <h2>吴经理提交了 ${formatCurrency(claim.total)} 差旅报销</h2>
                 <p>${claim.title}，${claim.count} 张票据，${claim.items.filter((item) => item.status.includes("需")).length} 项需要确认。</p>
+                ${renderTimeline(claim)}
               </div>
               <div class="action-group">
                 <button class="secondary-button" type="button">查看详情</button>
@@ -716,6 +815,7 @@ function renderFinanceView() {
             <span class="label">待财务复核</span>
             <h2>${claim.title}</h2>
             <p>${claim.count} 张票据，合计 ${formatCurrency(claim.total)}</p>
+            ${renderTimeline(claim)}
           </div>
           <div class="action-group">
             <button class="secondary-button" type="button">查看明细</button>
@@ -734,6 +834,7 @@ function renderFinanceView() {
             <span class="label">待出纳付款</span>
             <h2>${claim.title}</h2>
             <p>${claim.count} 张票据，合计 ${formatCurrency(claim.total)}</p>
+            ${renderTimeline(claim)}
           </div>
           <div class="action-group">
             <button class="secondary-button" type="button">查看明细</button>
@@ -752,6 +853,7 @@ function renderFinanceView() {
             <span class="label">已付款</span>
             <h2>${claim.title}</h2>
             <p>${claim.count} 张票据，合计 ${formatCurrency(claim.total)}</p>
+            ${renderTimeline(claim)}
           </div>
           <div class="action-group">
             <button class="secondary-button" type="button">查看明细</button>
