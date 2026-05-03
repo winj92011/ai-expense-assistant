@@ -65,3 +65,5 @@ https://ai-expense-assistant.vercel.app/?smoke=1
 ## 发布成熟度
 
 当前发布目标是“稳定演示版”，不是“企业生产版”。发布前应确认 `docs/PILOT_READINESS.md` 中的能力边界仍然准确，尤其是真实数据库、正式权限、附件存储和真实飞书/钉钉回调是否仍属于后续范围。
+
+如果发布内容涉及真实持久化，应额外对照 `docs/PERSISTENCE_PLAN.md` 检查数据库、API、审计日志和恢复流程。
