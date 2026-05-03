@@ -77,3 +77,14 @@ test("api persistence mode falls back to local storage when the API is unavailab
   expect(result.restored.draftItems[0].vendor).toBe("E2E API Fallback Hotel");
   expect(result.cleared).toBeNull();
 });
+
+test("data model exposes the current persistence mode", async ({ page }) => {
+  await page.goto("/");
+
+  const model = await page.evaluate(() => window.prototypeStore.buildDataModel());
+  expect(model.meta.persistence).toMatchObject({
+    mode: "local",
+    databaseConnected: false,
+    apiReady: false,
+  });
+});

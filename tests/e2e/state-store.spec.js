@@ -43,6 +43,11 @@ test("prototype store maps page state into database-like records", async ({ page
     role: "employee",
     platform: "feishu",
   });
+  expect(model.meta.persistence).toMatchObject({
+    mode: "local",
+    databaseConnected: false,
+    apiReady: false,
+  });
   expect(model.departments.length).toBeGreaterThanOrEqual(2);
   expect(model.expense_claims).toEqual(
     expect.arrayContaining([

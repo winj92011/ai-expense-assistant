@@ -156,10 +156,16 @@
     const draftCount = data?.draftItems?.length || 0;
     const claimCount = data?.submittedClaims?.length || 0;
     const adapterInfo = persistenceAdapter.describe();
+    const modeLabel =
+      data?.persistenceMode === "api-fallback"
+        ? "API 回退本地"
+        : adapterInfo.mode === "api"
+          ? "API 模式"
+          : "本地模式";
     panel.innerHTML = `
       <div>
         <strong>浏览器本地暂存</strong>
-        <span>仅用于原型演示；正式版本会接入数据库。上次保存：${formatSavedAt(data)} · 草稿 ${draftCount} 条 · 单据 ${claimCount} 条 · ${adapterInfo.mode}</span>
+        <span>仅用于原型演示；正式版本会接入数据库。上次保存：${formatSavedAt(data)} · 草稿 ${draftCount} 条 · 单据 ${claimCount} 条 · ${modeLabel}</span>
       </div>
       <div class="action-group">
         <button class="secondary-button" type="button" data-save-prototype>保存快照</button>

@@ -55,6 +55,15 @@ async function fetchJsonOrFallback(url, fallback) {
 }
 
 function localReadinessFallback() {
+  const persistence = window.prototypePersistence?.adapter?.describe
+    ? window.prototypePersistence.adapter.describe()
+    : window.persistenceAdapter?.describe
+      ? window.persistenceAdapter.describe()
+      : {
+          mode: "local",
+          databaseConnected: false,
+          apiReady: false,
+        };
   return {
     prototype: {
       mode: "static-prototype",
@@ -62,6 +71,7 @@ function localReadinessFallback() {
       mockApi: true,
       databaseConnected: false,
       objectStorageConfigured: false,
+      persistenceAdapter: persistence,
     },
     ai: {
       provider: "mock",
@@ -79,6 +89,7 @@ function localReadinessFallback() {
       e2eCommand: "npm run test:e2e",
       smokeUrl: "/?smoke=1",
     },
+    persistence,
   };
 }
 

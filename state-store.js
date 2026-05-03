@@ -265,6 +265,11 @@
   function buildDataModel() {
     const app = appState();
     const user = currentUser();
+    const persistence = window.prototypePersistence?.adapter?.describe
+      ? window.prototypePersistence.adapter.describe()
+      : window.persistenceAdapter?.describe
+        ? window.persistenceAdapter.describe()
+        : { mode: "local", databaseConnected: false, apiReady: false };
     const submittedClaims = Array.isArray(app.submittedClaims) ? app.submittedClaims : [];
     const draftItems = Array.isArray(app.draftItems) ? app.draftItems : [];
     const files = Array.isArray(app.files) ? app.files : [];
@@ -285,6 +290,7 @@
         platform: user.platform,
         platform_label: user.platform_label,
         locale: document.querySelector("#interfaceLanguage")?.value || "zh-CN",
+        persistence,
       },
       users: [currentUser()],
       departments: departments(),

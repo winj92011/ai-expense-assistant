@@ -169,6 +169,7 @@ GET /api/expense-claims?employee_id=mock-user-employee
 - 核心 E2E：`npm run test:e2e -- smoke.spec.js`
 - 全量 E2E：`npm test`
 - 线上 smoke：`/?smoke=1`
+- 系统 readiness/debug 输出应展示当前 persistence adapter 状态。
 
 新增持久化后，需要增加一个 E2E：
 
