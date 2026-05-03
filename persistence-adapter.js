@@ -24,7 +24,7 @@
         const payload = {
           ...data,
           persistedAt: data?.persistedAt || new Date().toISOString(),
-          persistenceMode: "local",
+          persistenceMode: data?.persistenceMode || "local",
         };
         storage.setItem(key, JSON.stringify(payload));
         return payload;
@@ -49,13 +49,56 @@
 
   function createApiAdapter(options = {}) {
     const fallback = createLocalAdapter(options);
+    const endpoint = options.endpoint || "/api/prototype/data-model-preview";
+
+    async function requestJson(path, requestOptions = {}) {
+      try {
+        const response = await fetch(path, requestOptions);
+        const text = await response.text();
+        if (!response.ok || !text.trim()) return null;
+        return JSON.parse(text);
+      } catch {
+        return null;
+      }
+    }
+
     return {
-      ...fallback,
       mode: "api",
+      key: fallback.key,
+      endpoint,
+      async save(data) {
+        const payload = {
+          ...data,
+          persistedAt: data?.persistedAt || new Date().toISOString(),
+          persistenceMode: "api",
+        };
+        const remote = await requestJson(endpoint, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (remote?.snapshot) return remote.snapshot;
+        return fallback.save({
+          ...payload,
+          persistenceMode: "api-fallback",
+          fallbackReason: "api_unavailable",
+        });
+      },
+      async read() {
+        const remote = await requestJson(endpoint);
+        if (remote?.snapshot) return remote.snapshot;
+        if (remote?.model) return remote.model;
+        return fallback.read();
+      },
+      async clear() {
+        await requestJson(endpoint, { method: "DELETE" });
+        return fallback.clear();
+      },
       describe() {
         return {
           mode: "api",
-          key: options.key || DEFAULT_KEY,
+          key: fallback.key,
+          endpoint,
           databaseConnected: false,
           apiReady: false,
           fallback: "local",

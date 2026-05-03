@@ -157,7 +157,7 @@ GET /api/expense-claims?employee_id=mock-user-employee
 第一阶段不需要重写前端：
 
 1. 保留当前 `state-store.js`，继续作为数据对象适配层。
-2. 保留 `persistence-adapter.js`，让页面先通过统一 adapter 保存和恢复。当前 adapter 已支持 `local` 模式，并预留 `api` 模式作为后续数据库接入点。
+2. 保留 `persistence-adapter.js`，让页面先通过统一 adapter 保存和恢复。当前 adapter 已支持 `local` 模式和 `api` fallback 模式；当 API 不可用时会回落到本地保存，后续接数据库时替换 endpoint 即可。
 3. 服务端返回标准对象后，再回填页面 state。
 4. 确认稳定后，逐步让提交、审批、财务复核按钮直接调用真实 API。
 
