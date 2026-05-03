@@ -84,6 +84,10 @@
   }
 
   function currentUser() {
+    if (window.identityContext && typeof window.identityContext.currentUser === "function") {
+      return window.identityContext.currentUser();
+    }
+
     const role = currentRole();
     const base = ROLE_USERS[role] || ROLE_USERS.employee;
     const account = document.querySelector(".account-card");

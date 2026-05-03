@@ -149,6 +149,8 @@
     if (event.target.closest("#submitDraftBtn, [data-approve-claim], [data-review-claim], [data-pay-claim]")) refreshSoon();
   });
 
+  document.addEventListener("identity-context-change", refreshSoon);
+
   document.addEventListener("change", (event) => {
     if (event.target.closest("#enterprisePlatform, #interfaceLanguage, #roleSelector, #expenseRows")) refreshSoon();
   });
