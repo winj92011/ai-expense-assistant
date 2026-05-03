@@ -20,6 +20,7 @@
 - 审批链路预览
 - 财务台账 CSV 导出
 - 数据对象预览与 JSON 导出，用于对齐后续数据库和附件存储
+- `state-store.js` 将页面 state 转换成接近数据库的对象集合
 - 数据模型草案：`docs/DATA_MODEL.md`
 - Prototype mock API 已按接口契约预留，暂不写真实数据库；`npm run test:contracts` 会检查文档和 mock API 响应形状
 - 环境变量说明：`docs/ENVIRONMENT.md`

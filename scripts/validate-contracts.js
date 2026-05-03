@@ -69,6 +69,7 @@ function main() {
     "api/feishu-config.js",
     "api/feishu-login.js",
   ];
+  const frontendDataFiles = ["state-store.js", "data-model-preview.js"];
   const previewCollections = [
     "expense_claims",
     "expense_items",
@@ -123,6 +124,7 @@ function main() {
   });
 
   apiFiles.forEach(assertFile);
+  frontendDataFiles.forEach(assertFile);
 
   Object.entries(mockApiShapes).forEach(([relativePath, values]) => {
     assertFileIncludes(relativePath, values);
