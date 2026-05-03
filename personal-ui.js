@@ -311,6 +311,77 @@
       background: #17202a;
     }
 
+    .prototype-console {
+      display: grid;
+      gap: 12px;
+      margin-top: 10px;
+      border: 1px solid rgba(211, 222, 232, 0.96);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 12px 30px rgba(39, 53, 68, 0.06);
+    }
+
+    .prototype-console > summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      min-height: 58px;
+      padding: 12px 14px;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .prototype-console > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .prototype-console > summary::after {
+      content: "展开";
+      min-width: 52px;
+      border: 1px solid #d3dee8;
+      border-radius: 999px;
+      padding: 5px 10px;
+      background: #f7fbfa;
+      color: #11896d;
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .prototype-console[open] > summary::after {
+      content: "收起";
+    }
+
+    .prototype-console-title {
+      display: grid;
+      gap: 3px;
+    }
+
+    .prototype-console-title strong {
+      font-size: 15px;
+    }
+
+    .prototype-console-title span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .prototype-console-body {
+      display: grid;
+      gap: 10px;
+      padding: 0 12px 12px;
+    }
+
+    .prototype-console .identity-context,
+    .prototype-console .platform-adapter,
+    .prototype-console .platform-callback,
+    .prototype-console .data-model-panel {
+      margin-top: 0;
+      box-shadow: none;
+    }
+
     @media (max-width: 920px) {
       .personal-ui .app-shell {
         grid-template-columns: 1fr;
@@ -335,4 +406,40 @@
   `;
 
   document.head.appendChild(style);
+
+  function ensurePrototypeConsole() {
+    const firstPanel = document.querySelector("#identityContext, #platformAdapter, #platformCallbackSimulator, #dataModelPreview");
+    if (!firstPanel || document.querySelector("#prototypeConsole")) return;
+
+    const consolePanel = document.createElement("details");
+    consolePanel.id = "prototypeConsole";
+    consolePanel.className = "prototype-console";
+    consolePanel.innerHTML = `
+      <summary>
+        <span class="prototype-console-title">
+          <strong>原型控制台</strong>
+          <span>平台、身份、回调和数据模型放在这里，默认演示更聚焦报销流程。</span>
+        </span>
+      </summary>
+      <div class="prototype-console-body"></div>
+    `;
+    if (navigator.webdriver) consolePanel.open = true;
+    firstPanel.insertAdjacentElement("beforebegin", consolePanel);
+  }
+
+  function collectPrototypePanels() {
+    ensurePrototypeConsole();
+    const body = document.querySelector("#prototypeConsole .prototype-console-body");
+    if (!body) return;
+
+    ["identityContext", "platformAdapter", "platformCallbackSimulator", "dataModelPreview"].forEach((id) => {
+      const panel = document.querySelector(`#${id}`);
+      if (panel && panel.parentElement !== body) body.appendChild(panel);
+    });
+  }
+
+  const observer = new MutationObserver(collectPrototypePanels);
+  observer.observe(document.body, { childList: true, subtree: true });
+  window.setTimeout(collectPrototypePanels, 0);
+  window.setTimeout(collectPrototypePanels, 80);
 })();
