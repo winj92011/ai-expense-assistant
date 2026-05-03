@@ -58,7 +58,6 @@ function main() {
     "POST /api/feishu/cards/expense-approval",
   ];
   const apiFiles = [
-    "api/system-readiness.js",
     "api/receipts/analyze.js",
     "api/session/context.js",
     "api/expense-claims/[claim_id]/items/[item_id].js",
@@ -97,7 +96,6 @@ function main() {
     "OBJECT_STORAGE_SECRET_KEY",
   ];
   const mockApiShapes = {
-    "api/system-readiness.js": ["prototype", "mockApi", "ai", "enterprise", "validation", "test:contracts"],
     "api/session/context.js": ["user", "permissions", "locale"],
     "api/prototype/data-model-preview.js": previewCollections,
     "api/expense-claims/[claim_id]/items/[item_id].js": ["PATCH", "item", "employee_note"],
