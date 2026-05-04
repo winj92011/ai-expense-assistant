@@ -201,3 +201,13 @@ persistence-api.spec.js
 ## Database Decision
 
 Pilot persistence will use Postgres. See `docs/DATABASE_DECISION.md` for the storage choice and `db/schema.sql` for the first table schema.
+
+## Database Adapter Implementation
+
+The prototype persistence adapter can now use the existing `GET /api/prototype/data-model-preview` endpoint as a compact database bridge.
+
+- Browser default remains local mode to keep demos stable without a database.
+- Add `?persistence=api` or set `localStorage["ai-expense-assistant:persistence-mode"] = "api"` to use API persistence.
+- When `DATABASE_URL` and the optional `postgres` package are available, the API writes the normalized data model into Postgres tables.
+- When the database is unavailable, the browser adapter falls back to local storage and records `persistenceMode: "api-fallback"`.
+- The database path is covered by `scripts/validate-database-persistence.js` without needing a real database during CI.

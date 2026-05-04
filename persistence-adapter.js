@@ -50,6 +50,10 @@
   function createApiAdapter(options = {}) {
     const fallback = createLocalAdapter(options);
     const endpoint = options.endpoint || "/api/prototype/data-model-preview";
+    let lastRemoteInfo = {
+      databaseConnected: false,
+      apiReady: false,
+    };
 
     async function requestJson(path, requestOptions = {}) {
       try {
@@ -69,6 +73,11 @@
       async save(data) {
         const payload = {
           ...data,
+          model:
+            data?.model ||
+            (window.prototypeStore?.buildDataModel
+              ? window.prototypeStore.buildDataModel()
+              : undefined),
           persistedAt: data?.persistedAt || new Date().toISOString(),
           persistenceMode: "api",
         };
@@ -77,7 +86,14 @@
           headers: { "content-type": "application/json" },
           body: JSON.stringify(payload),
         });
-        if (remote?.snapshot) return remote.snapshot;
+        if (remote?.persistence) lastRemoteInfo = remote.persistence;
+        if (remote?.snapshot) {
+          return {
+            ...remote.snapshot,
+            persistenceMode: remote.persistence?.databaseConnected ? "api-database" : payload.persistenceMode,
+            databaseConnected: Boolean(remote.persistence?.databaseConnected),
+          };
+        }
         return fallback.save({
           ...payload,
           persistenceMode: "api-fallback",
@@ -86,6 +102,7 @@
       },
       async read() {
         const remote = await requestJson(endpoint);
+        if (remote?.persistence) lastRemoteInfo = remote.persistence;
         if (remote?.snapshot) return remote.snapshot;
         if (remote?.model) return remote.model;
         return fallback.read();
@@ -99,8 +116,8 @@
           mode: "api",
           key: fallback.key,
           endpoint,
-          databaseConnected: false,
-          apiReady: false,
+          databaseConnected: Boolean(lastRemoteInfo.databaseConnected),
+          apiReady: Boolean(lastRemoteInfo.apiReady),
           fallback: "local",
         };
       },

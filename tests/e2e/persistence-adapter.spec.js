@@ -78,6 +78,75 @@ test("api persistence mode falls back to local storage when the API is unavailab
   expect(result.cleared).toBeNull();
 });
 
+test("api persistence mode reports database-backed saves when the endpoint is connected", async ({ page }) => {
+  await page.route("**/api/prototype/data-model-preview", async (route) => {
+    if (route.request().method() === "POST") {
+      const body = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          snapshot: body,
+          persistence: {
+            mode: "api",
+            databaseConnected: true,
+            apiReady: true,
+            database: "postgres",
+          },
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        model: { expense_claims: [{ id: "claim-db-e2e" }], expense_items: [], receipts: [], approval_tasks: [], audit_logs: [], finance_archives: [] },
+        persistence: {
+          mode: "api",
+          databaseConnected: true,
+          apiReady: true,
+          database: "postgres",
+        },
+      }),
+    });
+  });
+
+  await page.goto("/?persistence=api");
+  await page.evaluate(() => localStorage.clear());
+
+  const result = await page.evaluate(async () => {
+    const adapter = window.createPersistenceAdapter({
+      mode: "api",
+      key: "ai-expense-assistant:e2e-api-database",
+    });
+    const saved = await adapter.save({
+      savedAt: "2026-05-04T01:00:00.000Z",
+      draftItems: [{ vendor: "E2E Database Hotel", amount: 720 }],
+      submittedClaims: [],
+      claimStatus: "ready",
+    });
+    const restored = await adapter.read();
+    return {
+      info: adapter.describe(),
+      saved,
+      restored,
+    };
+  });
+
+  expect(result.info).toMatchObject({
+    mode: "api",
+    databaseConnected: true,
+    apiReady: true,
+  });
+  expect(result.saved).toMatchObject({
+    persistenceMode: "api-database",
+    databaseConnected: true,
+  });
+  expect(result.restored.expense_claims[0].id).toBe("claim-db-e2e");
+});
+
 test("data model exposes the current persistence mode", async ({ page }) => {
   await page.goto("/");
 

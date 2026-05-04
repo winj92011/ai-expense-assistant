@@ -53,3 +53,6 @@ npm run test:e2e
 ```
 
 `test:contracts` 会检查 `.env.example`、环境变量文档、API 契约、数据模型和 mock API 响应形状。
+## Database Persistence
+
+Set `DATABASE_URL` to enable Postgres persistence through the prototype persistence API. The browser remains in local mode by default; use `?persistence=api` when validating the database-backed path.

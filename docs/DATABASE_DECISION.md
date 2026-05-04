@@ -68,11 +68,13 @@ The app should only need this connection string when switching the persistence a
 ## Integration Order
 
 1. Create the database and run `db/schema.sql`.
-2. Keep the current browser/local persistence as fallback.
-3. Connect the existing persistence adapter to a small server persistence endpoint.
-4. Save `expense_claims`, `expense_items`, `approval_tasks`, and `audit_logs` first.
-5. Add receipt object storage through `receipts.storage_key`.
-6. Add finance archive writes through `finance_archives`.
+2. Install the optional `postgres` package during deployment.
+3. Set `DATABASE_URL`.
+4. Keep the current browser/local persistence as fallback.
+5. Enable API persistence with `?persistence=api` or the local storage persistence mode switch.
+6. Save `expense_claims`, `expense_items`, `approval_tasks`, and `audit_logs` first.
+7. Add receipt object storage through `receipts.storage_key`.
+8. Add finance archive writes through `finance_archives`.
 
 ## Vercel Hobby Constraint
 

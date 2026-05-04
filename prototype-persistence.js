@@ -7,8 +7,14 @@
 
   if (!loginStrip || !window.localStorage) return;
 
+  function preferredPersistenceMode() {
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get("persistence") || localStorage.getItem("ai-expense-assistant:persistence-mode");
+    return requested === "api" ? "api" : "local";
+  }
+
   const persistenceAdapter = window.createPersistenceAdapter
-    ? window.createPersistenceAdapter({ key: STORAGE_KEY, mode: "local" })
+    ? window.createPersistenceAdapter({ key: STORAGE_KEY, mode: preferredPersistenceMode() })
     : {
         save(data) {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -49,18 +55,19 @@
     };
   }
 
-  function saveSnapshot() {
+  async function saveSnapshot() {
     const data = snapshot();
-    const saved = persistenceAdapter.save(data);
+    const saved = await Promise.resolve(persistenceAdapter.save(data));
     renderPanel(saved);
     return saved;
   }
 
   function readSnapshot() {
-    return persistenceAdapter.read();
+    return Promise.resolve(persistenceAdapter.read());
   }
 
-  function restoreSnapshot(data = readSnapshot()) {
+  async function restoreSnapshot(data) {
+    data = data || (await readSnapshot());
     if (!data) {
       showToast("暂无本地暂存");
       return;
@@ -89,8 +96,8 @@
     showToast("已恢复本地暂存");
   }
 
-  function clearSnapshot() {
-    persistenceAdapter.clear();
+  async function clearSnapshot() {
+    await Promise.resolve(persistenceAdapter.clear());
     renderPanel(null);
     showToast("已清空本地暂存");
   }
@@ -143,7 +150,7 @@
     }).format(new Date(data.savedAt));
   }
 
-  function renderPanel(data = readSnapshot()) {
+  function renderPanel(data = null) {
     let panel = document.querySelector("#persistenceStrip");
     if (!panel) {
       panel = document.createElement("section");
@@ -153,8 +160,8 @@
       loginStrip.insertAdjacentElement("afterend", panel);
     }
 
-    const draftCount = data?.draftItems?.length || 0;
-    const claimCount = data?.submittedClaims?.length || 0;
+    const draftCount = data?.draftItems?.length || data?.expense_items?.length || 0;
+    const claimCount = data?.submittedClaims?.length || data?.expense_claims?.length || 0;
     const adapterInfo = persistenceAdapter.describe();
     const modeLabel =
       data?.persistenceMode === "api-fallback"
@@ -211,10 +218,12 @@
   });
 
   if (!isTestMode()) {
-    const data = readSnapshot();
-    if (data && (data.draftItems?.length || data.submittedClaims?.length)) {
-      window.setTimeout(() => restoreSnapshot(data), 0);
-    }
+    readSnapshot().then((data) => {
+      if (data && (data.draftItems?.length || data.submittedClaims?.length)) {
+        window.setTimeout(() => restoreSnapshot(data), 0);
+      }
+      renderPanel(data);
+    });
   }
 
   window.prototypePersistence = {
