@@ -165,3 +165,7 @@ draft
 3. 财务复核稳定后，再拆出 `finance_archives`。
 4. 企业身份接入后，把 `users.platform_user_id` 作为飞书/钉钉映射字段。
 5. 所有状态变更都写 `audit_logs`，不要只改主表状态。
+
+## Database Schema
+
+The first real persistence target is Postgres. The database choice is documented in `docs/DATABASE_DECISION.md`, and the SQL schema is in `db/schema.sql`.

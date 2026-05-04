@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "test": "npm run test:contracts && npm run test:e2e",
-    "test:contracts": "node scripts/validate-contracts.js && node scripts/validate-mock-api.js",
+    "test:contracts": "node scripts/validate-contracts.js && node scripts/validate-schema.js && node scripts/validate-mock-api.js",
     "test:e2e": "playwright test"
   },
   "devDependencies": {

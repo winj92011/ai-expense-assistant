@@ -197,3 +197,7 @@ persistence-api.spec.js
 - 线上 smoke 和全量 E2E 稳定通过。
 
 这时产品就不只是“看起来能跑”，而是进入“可以拿真实小样本试点”的阶段。
+
+## Database Decision
+
+Pilot persistence will use Postgres. See `docs/DATABASE_DECISION.md` for the storage choice and `db/schema.sql` for the first table schema.

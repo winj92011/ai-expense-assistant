@@ -100,3 +100,7 @@ npm test
 试点成熟度、能力边界和下一阶段路线见：`docs/PILOT_READINESS.md`
 
 真实持久化最小版本计划见：`docs/PERSISTENCE_PLAN.md`
+
+## Database Plan
+
+Pilot persistence will use Postgres. The database decision is documented in `docs/DATABASE_DECISION.md`, and the first table schema is in `db/schema.sql`.
