@@ -21,6 +21,12 @@ async function readJson(response, label) {
   }
 }
 
+async function assertOk(response, label) {
+  if (response.ok) return;
+  const text = await response.text();
+  throw new Error(`${label} failed: ${response.status} ${text.slice(0, 500)}`);
+}
+
 function testModel() {
   const suffix = Date.now();
   const claimId = `claim_online_${suffix}`;
@@ -101,7 +107,7 @@ function testModel() {
 async function main() {
   const root = baseUrl();
   const pageResponse = await fetch(`${root}/?persistence=api`);
-  assert(pageResponse.ok, `Page check failed: ${pageResponse.status}`);
+  await assertOk(pageResponse, "Page check");
 
   const endpoint = `${root}/api/prototype/data-model-preview`;
   const model = testModel();
@@ -117,13 +123,13 @@ async function main() {
       },
     }),
   });
-  assert(post.ok, `Persistence POST failed: ${post.status}`);
+  await assertOk(post, "Persistence POST");
   const posted = await readJson(post, "Persistence POST");
   assert(posted.persistence?.apiReady === true, "Persistence API is not ready");
   assert(posted.persistence?.databaseConnected === true, "Database is not connected online");
 
   const get = await fetch(endpoint);
-  assert(get.ok, `Persistence GET failed: ${get.status}`);
+  await assertOk(get, "Persistence GET");
   const current = await readJson(get, "Persistence GET");
   const claims = current.model?.expense_claims || current.expense_claims || [];
   assert(

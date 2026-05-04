@@ -13,6 +13,16 @@ function json(response, code, body) {
   return response.status(code).json(body);
 }
 
+function safeError(error) {
+  return {
+    message: error?.message || "Database persistence failed.",
+    code: error?.code || "",
+    constraint: error?.constraint_name || error?.constraint || "",
+    table: error?.table_name || error?.table || "",
+    routine: error?.routine || "",
+  };
+}
+
 function now() {
   return new Date().toISOString();
 }
@@ -418,21 +428,34 @@ async function handlePersistenceRequest(request, response) {
     return json(response, 405, { error: "Method not allowed" });
   }
 
-  const databaseResult = await withDatabase(async (database) => {
-    if (request.method === "POST") {
-      const model = normalizeModel(request.body || {});
-      const snapshot = request.body?.snapshot || request.body || model;
-      await upsertModel(database, model);
-      return { model, snapshot };
-    }
+  let databaseResult;
+  try {
+    databaseResult = await withDatabase(async (database) => {
+      if (request.method === "POST") {
+        const model = normalizeModel(request.body || {});
+        const snapshot = request.body?.snapshot || request.body || model;
+        await upsertModel(database, model);
+        return { model, snapshot };
+      }
 
-    if (request.method === "DELETE") {
-      await clearPrototypeData(database);
-      return { cleared: true, model: normalizeModel() };
-    }
+      if (request.method === "DELETE") {
+        await clearPrototypeData(database);
+        return { cleared: true, model: normalizeModel() };
+      }
 
-    return { model: await readModel(database) };
-  });
+      return { model: await readModel(database) };
+    });
+  } catch (error) {
+    return json(response, 500, {
+      error: "Database persistence failed",
+      detail: safeError(error),
+      persistence: {
+        mode: "api",
+        databaseConnected: true,
+        apiReady: false,
+      },
+    });
+  }
 
   if (!databaseResult.databaseConnected) {
     const reason =
