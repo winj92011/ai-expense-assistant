@@ -131,6 +131,36 @@
         font-size: 13px;
       }
 
+      .persistence-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .persistence-meta span {
+        display: inline-flex;
+        align-items: center;
+        min-height: 26px;
+        margin-top: 0;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #f4f7fb;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .persistence-meta span[data-tone="ok"] {
+        background: #effaf5;
+        color: var(--green);
+      }
+
+      .persistence-meta span[data-tone="warn"] {
+        background: #fff7ed;
+        color: #b45309;
+      }
+
       @media (max-width: 920px) {
         .persistence-strip {
           display: grid;
@@ -141,13 +171,31 @@
   }
 
   function formatSavedAt(data) {
-    if (!data?.savedAt) return "尚未保存";
+    const savedAt = data?.savedAt || data?.persistedAt || data?.meta?.generated_at;
+    if (!savedAt) return "尚未保存";
     return new Intl.DateTimeFormat("zh-CN", {
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
-    }).format(new Date(data.savedAt));
+    }).format(new Date(savedAt));
+  }
+
+  function latestClaimId(data) {
+    const submitted = Array.isArray(data?.submittedClaims) ? data.submittedClaims : [];
+    if (submitted.length) return submitted[submitted.length - 1]?.id || "";
+
+    const claims = Array.isArray(data?.expense_claims) ? data.expense_claims : [];
+    const visibleClaims = claims.filter((claim) => claim.id !== "draft-current");
+    if (visibleClaims.length) return visibleClaims[visibleClaims.length - 1]?.id || "";
+    return "";
+  }
+
+  function persistenceLabel(data, adapterInfo) {
+    if (data?.persistenceMode === "api-fallback") return "API 回退本地";
+    if (adapterInfo.mode === "api" && adapterInfo.databaseConnected) return "数据库已连接";
+    if (adapterInfo.mode === "api") return adapterInfo.apiReady ? "API 已连接" : "API 模式";
+    return "本地模式";
   }
 
   function renderPanel(data = null) {
@@ -163,18 +211,19 @@
     const draftCount = data?.draftItems?.length || data?.expense_items?.length || 0;
     const claimCount = data?.submittedClaims?.length || data?.expense_claims?.length || 0;
     const adapterInfo = persistenceAdapter.describe();
-    const modeLabel =
-      data?.persistenceMode === "api-fallback"
-        ? "API 回退本地"
-        : adapterInfo.mode === "api" && adapterInfo.databaseConnected
-          ? "数据库已连接"
-          : adapterInfo.mode === "api"
-          ? "API 模式"
-          : "本地模式";
+    const modeLabel = persistenceLabel(data, adapterInfo);
+    const claimId = latestClaimId(data);
+    const modeTone = adapterInfo.databaseConnected ? "ok" : data?.persistenceMode === "api-fallback" ? "warn" : "neutral";
     panel.innerHTML = `
       <div>
-        <strong>浏览器本地暂存</strong>
-        <span>仅用于原型演示；正式版本会接入数据库。上次保存：${formatSavedAt(data)} · 草稿 ${draftCount} 条 · 单据 ${claimCount} 条 · ${modeLabel}</span>
+        <strong>持久化状态</strong>
+        <span>保存草稿、提交、审批和财务动作后会自动刷新这里。</span>
+        <div class="persistence-meta" aria-label="持久化观测">
+          <span data-tone="${modeTone}">模式：${modeLabel}</span>
+          <span>最近保存：${formatSavedAt(data)}</span>
+          <span>草稿 ${draftCount} 条 · 单据 ${claimCount} 条</span>
+          <span>最近单据：${claimId || "暂无"}</span>
+        </div>
       </div>
       <div class="action-group">
         <button class="secondary-button" type="button" data-save-prototype>保存快照</button>

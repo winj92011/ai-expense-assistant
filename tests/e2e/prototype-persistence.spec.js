@@ -40,11 +40,14 @@ test("prototype persistence saves and restores a local snapshot", async ({ page 
 
   await page.getByRole("button", { name: "保存快照" }).click();
   await expect(page.getByText("草稿 1 条 · 单据 1 条")).toBeVisible();
+  await expect(page.getByLabel("持久化观测")).toContainText("模式：本地模式");
+  await expect(page.getByLabel("持久化观测")).toContainText("最近单据：persist-e2e-claim");
 
   await page.reload();
   await expect(page.locator('input[value="E2E 本地暂存酒店"]')).toBeVisible();
   await expect(page.locator("#draftsView")).toContainText("E2E 本地暂存报销");
   await expect(page.getByText("草稿 1 条 · 单据 1 条")).toBeVisible();
+  await expect(page.getByLabel("持久化观测")).toContainText("最近单据：persist-e2e-claim");
 
   await page.getByRole("button", { name: "清空快照" }).click();
   await page.reload();

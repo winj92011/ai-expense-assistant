@@ -1,6 +1,8 @@
 .env
 *.zip
 node_modules/
+.npm-cache/
+.codex-git/
 dist/
 .next/
 .vercel/
