@@ -147,6 +147,98 @@ test("api persistence mode reports database-backed saves when the endpoint is co
   expect(result.restored.expense_claims[0].id).toBe("claim-db-e2e");
 });
 
+test("api persistence mode restores visible page state from database records", async ({ page }) => {
+  await page.addInitScript(() => localStorage.clear());
+  await page.route("**/api/prototype/data-model-preview", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        model: {
+          meta: { generated_at: "2026-05-04T02:00:00.000Z" },
+          departments: [],
+          users: [],
+          expense_claims: [
+            {
+              id: "draft-current",
+              employee_id: "mock-user-employee",
+              title: "E2E 数据库恢复草稿",
+              status: "draft",
+              total: 880,
+              currency: "CNY",
+              receipt_count: 1,
+              risk_count: 0,
+              route_summary: "数据库恢复路线",
+              source: "prototype",
+            },
+            {
+              id: "claim-visible-db",
+              employee_id: "mock-user-employee",
+              title: "E2E 数据库恢复单据",
+              status: "submitted",
+              total: 660,
+              currency: "CNY",
+              receipt_count: 1,
+              risk_count: 0,
+              route_summary: "数据库恢复路线",
+              source: "prototype",
+            },
+          ],
+          expense_items: [
+            {
+              id: "item-visible-draft",
+              claim_id: "draft-current",
+              expense_date: "2026-05-04",
+              invoice_date: "2026-05-04",
+              category: "住宿",
+              vendor: "E2E 数据库恢复酒店",
+              amount: 880,
+              currency: "CNY",
+              status: "已识别",
+            },
+            {
+              id: "item-visible-claim",
+              claim_id: "claim-visible-db",
+              expense_date: "2026-05-05",
+              invoice_date: "2026-05-05",
+              category: "交通",
+              vendor: "E2E 数据库恢复交通",
+              amount: 660,
+              currency: "CNY",
+              status: "已识别",
+            },
+          ],
+          receipts: [],
+          approval_tasks: [
+            {
+              id: "task-visible-db",
+              claim_id: "claim-visible-db",
+              step: "员工提交",
+              actor: "吴经理",
+              status: "已提交",
+              handled_at: "05/04 10:00",
+            },
+          ],
+          audit_logs: [],
+          finance_archives: [],
+        },
+        persistence: {
+          mode: "api",
+          databaseConnected: true,
+          apiReady: true,
+          database: "postgres",
+        },
+      }),
+    });
+  });
+
+  await page.goto("/?persistence=api");
+
+  await expect(page.locator('input[value="E2E 数据库恢复酒店"]')).toBeVisible();
+  await expect(page.locator("#draftsView")).toContainText("E2E 数据库恢复单据");
+  await expect(page.locator("#persistenceStrip")).toContainText("数据库已连接");
+});
+
 test("data model exposes the current persistence mode", async ({ page }) => {
   await page.goto("/");
 

@@ -213,3 +213,4 @@ The prototype persistence adapter can now use the existing `GET /api/prototype/d
 - The database path is covered by `scripts/validate-database-persistence.js` without needing a real database during CI.
 - `npm run db:schema` applies `db/schema.sql` to the real `DATABASE_URL`.
 - `npm run verify:persistence` validates the deployed `?persistence=api` flow against the online database.
+- In `?persistence=api` mode, database records are converted back into the page snapshot shape so a saved draft or claim can be restored visibly after refresh.

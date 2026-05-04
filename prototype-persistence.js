@@ -166,7 +166,9 @@
     const modeLabel =
       data?.persistenceMode === "api-fallback"
         ? "API 回退本地"
-        : adapterInfo.mode === "api"
+        : adapterInfo.mode === "api" && adapterInfo.databaseConnected
+          ? "数据库已连接"
+          : adapterInfo.mode === "api"
           ? "API 模式"
           : "本地模式";
     panel.innerHTML = `
