@@ -56,3 +56,12 @@ npm run test:e2e
 ## Database Persistence
 
 Set `DATABASE_URL` to enable Postgres persistence through the prototype persistence API. The browser remains in local mode by default; use `?persistence=api` when validating the database-backed path.
+
+After creating a Neon/Postgres database:
+
+```bash
+npm run db:schema
+npm run verify:persistence
+```
+
+`db:schema` applies `db/schema.sql` to `DATABASE_URL`. `verify:persistence` checks the production page with `?persistence=api`, writes a verification claim through the persistence API, and confirms it can be read back.

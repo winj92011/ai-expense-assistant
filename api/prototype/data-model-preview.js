@@ -133,12 +133,11 @@ async function upsertModel(database, model) {
   for (const department of model.departments) {
     await database.query(
       `insert into departments (id, name, manager_id)
-       values ($1, $2, $3)
+       values ($1, $2, null)
        on conflict (id) do update
        set name = excluded.name,
-           manager_id = excluded.manager_id,
            updated_at = now()`,
-      [department.id, department.name, value(department.manager_id, null)],
+      [department.id, department.name],
     );
   }
 
@@ -174,6 +173,20 @@ async function upsertModel(database, model) {
         value(user.identity_field, "mock_user_id"),
         user.is_mock_identity !== false,
       ],
+    );
+  }
+
+  for (const department of model.departments) {
+    if (!department.manager_id) continue;
+    await database.query(
+      `update departments
+       set manager_id = case
+           when exists (select 1 from users where id = $2) then $2
+           else null
+         end,
+         updated_at = now()
+       where id = $1`,
+      [department.id, department.manager_id],
     );
   }
 

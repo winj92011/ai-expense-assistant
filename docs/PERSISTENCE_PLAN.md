@@ -211,3 +211,5 @@ The prototype persistence adapter can now use the existing `GET /api/prototype/d
 - When `DATABASE_URL` and the optional `postgres` package are available, the API writes the normalized data model into Postgres tables.
 - When the database is unavailable, the browser adapter falls back to local storage and records `persistenceMode: "api-fallback"`.
 - The database path is covered by `scripts/validate-database-persistence.js` without needing a real database during CI.
+- `npm run db:schema` applies `db/schema.sql` to the real `DATABASE_URL`.
+- `npm run verify:persistence` validates the deployed `?persistence=api` flow against the online database.

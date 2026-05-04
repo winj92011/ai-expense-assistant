@@ -70,6 +70,7 @@ function main() {
     "api/feishu-login.js",
   ];
   const frontendDataFiles = ["state-store.js", "data-model-preview.js"];
+  const persistenceScripts = ["scripts/load-env-file.js", "scripts/run-db-schema.js", "scripts/verify-online-persistence.js"];
   const previewCollections = [
     "expense_claims",
     "expense_items",
@@ -125,6 +126,8 @@ function main() {
 
   apiFiles.forEach(assertFile);
   frontendDataFiles.forEach(assertFile);
+  persistenceScripts.forEach(assertFile);
+  assertFileIncludes("package.json", ["db:schema", "verify:persistence"]);
 
   Object.entries(mockApiShapes).forEach(([relativePath, values]) => {
     assertFileIncludes(relativePath, values);

@@ -140,6 +140,7 @@ async function main() {
   [
     "insert into departments",
     "insert into users",
+    "update departments",
     "insert into expense_claims",
     "insert into expense_items",
     "insert into receipts",
